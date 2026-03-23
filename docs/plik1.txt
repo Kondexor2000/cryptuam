@@ -1,0 +1,7 @@
+Python jest popularnym językiem programowania używanym w sztucznej inteligencji.
+
+Machine learning to dziedzina informatyki, która pozwala komputerom uczyć się na podstawie danych.
+
+Biblioteki używane w AI to między innymi PyTorch, TensorFlow oraz scikit-learn.
+
+Deep learning jest częścią machine learning i wykorzystuje sieci neuronowe.

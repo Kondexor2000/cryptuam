@@ -1,0 +1,5 @@
+Chatbot to program komputerowy, który potrafi prowadzić rozmowę z użytkownikiem.
+
+Chatboty wykorzystują często modele językowe oraz techniki przetwarzania języka naturalnego (NLP).
+
+Przykłady chatbotów to systemy obsługi klienta, asystenci głosowi oraz systemy podobne do ChatGPT.

@@ -34,20 +34,24 @@ while True:
     if question.lower() in ["exit", "quit"]:
         break
 
-    # 🔹 Zamieniamy pytanie na embedding
-    q_embedding = embed_model.encode([question])
+    with open("docs/pliknot.txt", "r", encoding="utf-8") as f:
+        banned_words = [line.strip().lower() for line in f.readlines()]
 
-    # 🔹 Wyszukujemy najbardziej pasujący dokument w indeksie
-    D, I = index.search(np.array(q_embedding), k=1)
-    context = docs[I[0][0]]
+    if not any(word in question.lower() for word in banned_words):
+        q_embedding = embed_model.encode([question])
 
-    # 🔹 Tworzymy prompt dla modelu
-    prompt = f"{context}\n\nPytanie: {question}\nOdpowiedź:"
+        # 🔹 Wyszukujemy najbardziej pasujący dokument w indeksie
+        D, I = index.search(np.array(q_embedding), k=1)
+        context = docs[I[0][0]]
 
-    # 🔹 Generujemy odpowiedź
-    result = generator(prompt)
+        # 🔹 Tworzymy prompt dla modelu
+        prompt = f"{context}\n\nPytanie: {question}\nOdpowiedź:"
 
-    # 🔹 Wyciągamy wygenerowany tekst
-    answer = result[0]["generated_text"].strip()
+        # 🔹 Generujemy odpowiedź
+        result = generator(prompt)
+
+        answer = result[0]["generated_text"].strip()
+    else:
+        answer = "Nie mogę wygenerować tekstów naruszających zasady etyczne."
 
     print("AI:", answer)

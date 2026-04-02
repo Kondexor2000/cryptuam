@@ -2,3 +2,5 @@ backup_czar.enc
 backup.enc
 backup_meta_czar.json
 backup_meta.json
+docs.index
+docs.npy

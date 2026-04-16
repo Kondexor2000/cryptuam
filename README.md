@@ -1,6 +1,12 @@
 # Eduworknet
 
-    Proszę uruchomić git clone https://github.com/Kondexor2000/cryptuam.git 2a. Proszę uruchomić python secure_backup.py, jeżeli pliki są duże lub jeżeli priorytetem jest bardziej zaawansowane bezpieczeństwo. 2b. Proszę uruchomić python rczar.py, jeżeli jest to cel naukowo-badawczy lub jeżeli priorytetem jest czas (szybciej się tworzy backup). 2c. Proszę uruchomić python index.py, a następnie chat.py, jeżeli celem nie jest security, tylko AI (naukowo-badawcze kwestie generowania treści).
+    Please run git clone https://github.com/Kondexor2000/cryptuam.git
+
+    2a. Please run python secure_backup.py if the files are large or if more advanced security is a priority.
+
+    2b. Please run python rczar.py if this is for scientific/research purposes or if speed is the priority (backup is created faster).
+
+    2c. Please run python index.py and then chat.py if the goal is not security, but AI (research-related content generation).
 
 In case 2c expansion is planned AI about application possibility in needs graphics, applications etc. It would shorten this time on brainstorming about 70%. Refer to 2a and 2b, the faster is being processed backup the less will safe.
 

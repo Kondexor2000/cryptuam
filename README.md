@@ -12,29 +12,29 @@ In case 2c expansion is planned AI about application possibility in needs graphi
 
 ---
 
-## Spis treści
+## Contents
 
-- [Instalacja](#instalacja)
-- [Konfiguracja](#konfiguracja)
-- [Funkcje](#funkcje)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Functions](#functions)
 - [Tech stack](#tech-stack)
-- [Kontakt](#kontakt)
+- [Contact](#contact)
 
-## Instalacja
+## Installation
 
 ```bash
 git clone https://github.com/Kondexor2000/cryptuam.git
 cd cryptuam
 ```
 
-## Konfiguracja
+## Configuration
 
 ```bash
 python secure_backup.py || python rczar.py || python index.py
                                               python chat.py
 ```
 
-## Funkcje
+## Functions
 
 - Testowanie zabezpieczenia danych
 - Testowanie NLP
@@ -44,6 +44,6 @@ python secure_backup.py || python rczar.py || python index.py
 - Python
 - tools with imports in code
 
-## Kontakt
+## Contact
 
-- Jeśli masz jakiekolwiek pytań lub sugestii, skontaktuj się z nami na adres e-mail: k.kosciecha20@gmail.com
+- If you have any questions or suggestions, get in touch with us on e-mail address: k.kosciecha20@gmail.com

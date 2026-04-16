@@ -36,8 +36,8 @@ python secure_backup.py || python rczar.py || python index.py
 
 ## Functions
 
-- Testowanie zabezpieczenia danych
-- Testowanie NLP
+- Data security testing
+- NLP testing
 
 ## Tech stack
 

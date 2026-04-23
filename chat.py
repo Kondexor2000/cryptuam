@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from sentence_transformers import SentenceTransformer
 from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+import os
 
 # ----------------------------
 # 1️⃣ Embedding model
@@ -46,8 +47,9 @@ idea_generator = pipeline(
 # 5️⃣ banned words (raz!)
 # ----------------------------
 try:
-    with open("docs/pliknot.txt", "r", encoding="utf-8") as f:
-        banned_words = [line.strip().lower() for line in f.readlines()]
+    for file in os.listdir("docs_not"):
+        with open(f"docs_not/{file}", "r", encoding="utf-8") as f:
+            banned_words = [line.strip().lower() for line in f.readlines()]
 except:
     banned_words = []
 
@@ -73,14 +75,15 @@ while True:
 
     # 🔎 search
     D, I = index.search(np.array(q_embedding), k=5)
-    context = docs[I[0][0]]
+    context_many = "\n".join([docs[i] for i in I[0]])
+    context_one = docs[I[0][0]]
 
     # 🧠 prompt QA
-    prompt = f"""
+    prompt_many = f"""
 Odpowiedz na pytanie na podstawie kontekstu.
 
 Kontekst:
-{context}
+{context_many}
 
 Pytanie:
 {question}
@@ -88,14 +91,30 @@ Pytanie:
 Odpowiedź:
 """
 
-    result = qa_generator(prompt)
-    answer = result[0]["generated_text"].strip()
+    prompt_one = f"""
+Odpowiedz na pytanie na podstawie kontekstu.
+
+Kontekst:
+{context_one}
+
+Pytanie:
+{question}
+
+Odpowiedź:
+"""
+
+    result_many = qa_generator(prompt_many)
+    answer_many = result_many[0]["generated_text"].strip()
+
+    result_one = qa_generator(prompt_one)
+    answer_one = result_one[0]["generated_text"].strip()
 
     # 💡 generowanie pomysłów (opcjonalne)
-    idea_prompt = f"Temat: {answer}\nPomysły:\n"
+    idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
+    idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
 
-    ideas_output = idea_generator(
-        idea_prompt,
+    ideas_output_many = idea_generator(
+        idea_prompt_many,
         max_new_tokens=60,
         do_sample=True,
         temperature=0.9,
@@ -103,17 +122,37 @@ Odpowiedź:
         num_return_sequences=3
     )
 
-    ideas = []
-    for o in ideas_output:
-        text = o["generated_text"].replace(idea_prompt, "").strip()
-        ideas.append(text.split("\n")[0])
+    ideas_output_one = idea_generator(
+        idea_prompt_one,
+        max_new_tokens=60,
+        do_sample=True,
+        temperature=0.9,
+        top_p=0.9,
+        num_return_sequences=3
+    )
+
+    ideas_many = []
+    for o in ideas_output_many:
+        text = o["generated_text"].replace(idea_prompt_many, "").strip()
+        ideas_many.append(text.split("\n")[0])
+
+    ideas_one = []
+    for o in ideas_output_one:
+        text = o["generated_text"].replace(idea_prompt_one, "").strip()
+        ideas_one.append(text.split("\n")[0])
 
     # 📢 output
-    print("\nAI:", answer)
+    print("\nAI_out:", answer_many)
+    print("\nAI_in:", answer_one)
 
-    if ideas:
-        print("\n💡 Pomysły:")
-        for i, idea in enumerate(ideas, 1):
+    if ideas_many:
+        print("\n💡 Pomysły_zewnętrzne:")
+        for i, idea in enumerate(ideas_many, 1):
+            print(f"{i}. {idea}")
+
+    if ideas_one:
+        print("\n💡 Pomysły_wewnętrzne:")
+        for i, idea in enumerate(ideas_one, 1):
             print(f"{i}. {idea}")
 
     print("\n" + "-"*50)

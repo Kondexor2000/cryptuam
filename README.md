@@ -10,6 +10,8 @@
 
 In case 2c expansion is planned AI about application possibility in needs graphics, applications etc. It would shorten this time on brainstorming about 70%. Refer to 2a and 2b, the faster is being processed backup the less will safe.
 
+In Polish: Projekt wykonywany w celu zaliczeń zaległych przedmiotów na studiach informatycznych UAM
+
 ---
 
 ## Contents

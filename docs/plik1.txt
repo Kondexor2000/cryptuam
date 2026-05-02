@@ -1,7 +1,10 @@
-Python jest popularnym językiem programowania używanym w sztucznej inteligencji.
-
-Machine learning to dziedzina informatyki, która pozwala komputerom uczyć się na podstawie danych.
-
-Biblioteki używane w AI to między innymi PyTorch, TensorFlow oraz scikit-learn.
-
-Deep learning jest częścią machine learning i wykorzystuje sieci neuronowe.
+Czy programowanie można uznać za formę sztuki?
+Jakie wartości są najważniejsze w pracy programisty?
+Czy sztuczna inteligencja może zastąpić ludzką kreatywność?
+Jak radzisz sobie z porażkami, gdy kod nie działa?
+Czy technologia zbliża ludzi, czy raczej ich oddala?
+Jak wygląda etyka w świecie IT?
+Czy każdy może nauczyć się programować, czy to wymaga szczególnych predyspozycji?
+Jak wyobrażasz sobie świat za 20 lat dzięki rozwojowi technologii?
+Co daje Ci największą satysfakcję w Twojej pracy?
+Jakie znaczenie ma odpowiedzialność społeczna w tworzeniu oprogramowania?

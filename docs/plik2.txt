@@ -1,5 +1,10 @@
-Chatbot to program komputerowy, który potrafi prowadzić rozmowę z użytkownikiem.
-
-Chatboty wykorzystują często modele językowe oraz techniki przetwarzania języka naturalnego (NLP).
-
-Przykłady chatbotów to systemy obsługi klienta, asystenci głosowi oraz systemy podobne do ChatGPT.
+Ile czasu zajęło Ci nauczenie się programowania od podstaw?
+Czy Twoja praca pozwala na zachowanie równowagi między życiem prywatnym a zawodowym?
+Jak wygląda typowy dzień programisty?
+Czy programiści naprawdę zarabiają aż tak dużo?
+Jakie języki programowania są dziś najbardziej przyszłościowe?
+Czy można pracować zdalnie z dowolnego miejsca na świecie?
+Co robisz, gdy utkniesz na jednym problemie na wiele godzin?
+Jakie są największe minusy pracy w IT?
+Czy poleciłbyś tę ścieżkę kariery młodym ludziom?
+Jakie umiejętności poza kodowaniem są najważniejsze w tej branży?

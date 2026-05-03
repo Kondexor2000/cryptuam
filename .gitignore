@@ -10,3 +10,4 @@ docs_events.index
 docs_events.npy
 docs_sylabus.index
 docs_sylabus.npy
+ecg_model.pkl

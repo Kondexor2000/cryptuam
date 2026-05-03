@@ -1,14 +1,14 @@
 import faiss
 import numpy as np
-import torch
-from sentence_transformers import SentenceTransformer
-from transformers import pipeline, AutoTokenizer, AutoModelForCausalLM
+import tensorflow as tf
+import tensorflow_hub as hub
+from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 import os
 
 # ----------------------------
-# 1️⃣ Embedding model
+# 1️⃣ Embedding model (TensorFlow)
 # ----------------------------
-embed_model = SentenceTransformer("all-MiniLM-L6-v2")
+embed_model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
 
 # ----------------------------
 # 2️⃣ Indeks + dokumenty
@@ -17,16 +17,19 @@ index = faiss.read_index("docs.index")
 docs = np.load("docs.npy", allow_pickle=True)
 
 # ----------------------------
-# 3️⃣ Model QA (Flan-T5)
+# 3️⃣ Model QA (Flan-T5 - TensorFlow)
 # ----------------------------
+qa_tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
+qa_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
+
 qa_generator = pipeline(
-    "text-generation",  
-    model="google/flan-t5-base",
-    max_new_tokens=150
+    "text-generation",
+    model=qa_model,
+    tokenizer=qa_tokenizer
 )
 
 # ----------------------------
-# 4️⃣ Model do pomysłów (GPT2 PL)
+# 4️⃣ Model do pomysłów (GPT2 PL - TensorFlow)
 # ----------------------------
 IDEA_MODEL = "radlab/polish-gpt2-small-v2"
 
@@ -40,11 +43,10 @@ idea_generator = pipeline(
     "text-generation",
     model=idea_model,
     tokenizer=idea_tokenizer,
-    device=0 if torch.cuda.is_available() else -1
 )
 
 # ----------------------------
-# 5️⃣ banned words (raz!)
+# 5️⃣ banned words
 # ----------------------------
 try:
     for file in os.listdir("docs_not"):
@@ -69,8 +71,8 @@ while True:
         print("AI: Nie mogę wygenerować tekstów naruszających zasady etyczne.")
         continue
 
-    # 🔎 embedding
-    q_embedding = embed_model.encode([question])
+    # 🔎 embedding (TensorFlow)
+    q_embedding = embed_model([question]).numpy()
     faiss.normalize_L2(q_embedding)
 
     # 🔎 search
@@ -109,7 +111,7 @@ Odpowiedź:
     result_one = qa_generator(prompt_one)
     answer_one = result_one[0]["generated_text"].strip()
 
-    # 💡 generowanie pomysłów (opcjonalne)
+    # 💡 pomysły
     idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
     idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
 

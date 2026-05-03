@@ -1,10 +1,13 @@
 import os
-from sentence_transformers import SentenceTransformer
 import faiss
 import numpy as np
 import PyPDF2
+import tensorflow_hub as hub
 
-model = SentenceTransformer("all-MiniLM-L6-v2")
+# ----------------------------
+# 1️⃣ TensorFlow embedding model
+# ----------------------------
+embed_model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
 
 def read_pdf(path):
     text = ""
@@ -30,16 +33,17 @@ for file in os.listdir("sylabus"):
     chunks = chunk_text(text)
     docs.extend(chunks)
 
-embeddings = model.encode(docs, batch_size=32, show_progress_bar=True)
+# ----------------------------
+# 2️⃣ embeddings (TF)
+# ----------------------------
+embeddings = embed_model(docs).numpy().astype("float32")
 
-embeddings = np.array(embeddings).astype("float32")
 faiss.normalize_L2(embeddings)
 
 index = faiss.IndexFlatIP(embeddings.shape[1])
 index.add(embeddings)
 
 faiss.write_index(index, "docs_sylabus.index")
-
 np.save("docs_sylabus.npy", docs)
 
-print("Index created")
+print("Index created (TensorFlow)")

@@ -1,5 +1,6 @@
 import os
 import json
+import base64
 
 from pqcrypto.kem.ml_kem_512 import generate_keypair, encrypt
 
@@ -9,24 +10,37 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 
 
 # =========================================
-# 1️⃣ Tworzenie dumpa bazy plików
+# 1️⃣ Wczytanie danych (plik lub folder)
 # =========================================
+
+INPUT_PATH = "ecg_model.pkl"  # może być plik LUB katalog
 
 docs = {}
 
-for file in os.listdir("docs"):
-    path = os.path.join("docs", file)
+if os.path.isfile(INPUT_PATH):
+    # pojedynczy plik
+    with open(INPUT_PATH, "rb") as f:
+        docs[os.path.basename(INPUT_PATH)] = base64.b64encode(f.read()).decode("utf-8")
 
-    if os.path.isfile(path):
-        with open(path, "r", encoding="utf-8") as f:
-            docs[file] = f.read()
+elif os.path.isdir(INPUT_PATH):
+    # katalog
+    for file in os.listdir(INPUT_PATH):
+        path = os.path.join(INPUT_PATH, file)
 
-# zamiana na JSON bytes
+        if os.path.isfile(path):
+            with open(path, "rb") as f:
+                docs[file] = base64.b64encode(f.read()).decode("utf-8")
+
+else:
+    raise ValueError(f"Ścieżka nie istnieje: {INPUT_PATH}")
+
+
+# JSON → bytes
 data = json.dumps(docs).encode("utf-8")
 
 
 # =========================================
-# 2️⃣ ML-KEM (Post-Quantum Key Exchange)
+# 2️⃣ ML-KEM (Post-Quantum)
 # =========================================
 
 public_key, secret_key = generate_keypair()
@@ -35,7 +49,7 @@ kem_ciphertext, shared_secret = encrypt(public_key)
 
 
 # =========================================
-# 3️⃣ HKDF – rozdzielenie kluczy
+# 3️⃣ HKDF – podział kluczy
 # =========================================
 
 hkdf = HKDF(
@@ -66,7 +80,6 @@ cipher = Cipher(
 )
 
 encryptor = cipher.encryptor()
-
 ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 
 
@@ -75,9 +88,7 @@ ciphertext = encryptor.update(padded_data) + encryptor.finalize()
 # =========================================
 
 h = hmac.HMAC(hmac_key, hashes.SHA256())
-
 h.update(iv + ciphertext)
-
 mac = h.finalize()
 
 
@@ -88,10 +99,9 @@ mac = h.finalize()
 with open("backup.enc", "wb") as f:
     f.write(iv + ciphertext)
 
-
 meta = {
-    "kem_ciphertext": kem_ciphertext.hex(),
-    "hmac": mac.hex()
+    "kem_ciphertext": base64.b64encode(kem_ciphertext).decode(),
+    "hmac": base64.b64encode(mac).decode()
 }
 
 with open("backup_meta.json", "w") as f:

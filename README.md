@@ -12,6 +12,8 @@ In case 2c expansion is planned AI about application possibility in needs graphi
 
 In Polish: Projekt wykonywany w celu zaliczeń zaległych przedmiotów na studiach informatycznych UAM
 
+DRY: Not required
+
 ---
 
 ## Contents

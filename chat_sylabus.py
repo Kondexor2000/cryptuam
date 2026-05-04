@@ -3,6 +3,7 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
+from rczar import secure_backup
 import os
 
 # ----------------------------
@@ -126,15 +127,18 @@ Odpowiedź:
     # ----------------------------
     # output
     # ----------------------------
+    print("\nAI_out:", secure_backup(answer_many.strip().encode("utf-8")))
+    print("\nAI_in:", secure_backup(answer_one.strip().encode("utf-8")))
+
     print("\nAI_out:", answer_many.strip())
     print("\nAI_in:", answer_one.strip())
 
     print("\n💡 Pomysły_zewnętrzne:")
     for i, o in enumerate(ideas_many, 1):
-        print(i, o["generated_text"].replace(idea_prompt_many, "").strip().split("\n")[0])
+        print(i, secure_backup(o["generated_text"].replace(idea_prompt_many, "").strip().split("\n")[0].encode("utf-8")))
 
     print("\n💡 Pomysły_wewnętrzne:")
     for i, o in enumerate(ideas_one, 1):
-        print(i, o["generated_text"].replace(idea_prompt_one, "").strip().split("\n")[0])
+        print(i, secure_backup(o["generated_text"].replace(idea_prompt_one, "").strip().split("\n")[0].encode("utf-8")))
 
     print("\n" + "-"*50)

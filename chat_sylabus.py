@@ -46,17 +46,6 @@ idea_generator = pipeline(
 )
 
 # ----------------------------
-# 5️⃣ banned words
-# ----------------------------
-try:
-    banned_words = []
-    for file in os.listdir("docs_not"):
-        with open(f"docs_not/{file}", "r", encoding="utf-8") as f:
-            banned_words += [line.strip().lower() for line in f.readlines()]
-except:
-    banned_words = []
-
-# ----------------------------
 # 6️⃣ Chat loop
 # ----------------------------
 print("Mini ChatGPT (TensorFlow + sylabus). Wpisz 'exit'\n")
@@ -66,10 +55,6 @@ while True:
 
     if question.lower() in ["exit", "quit"]:
         break
-
-    if any(word in question.lower() for word in banned_words):
-        print("AI: Zablokowane.")
-        continue
 
     # ----------------------------
     # embedding (TF)

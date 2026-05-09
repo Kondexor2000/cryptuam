@@ -5,7 +5,9 @@ import faiss
 import numpy as np
 
 # Załaduj model embeddingów z TensorFlow Hub
-model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+
+url = "https://tfhub.dev/google/universal-sentence-encoder/4"
+model = hub.load(url)
 
 docs = []
 for file in os.listdir("docs"):
@@ -20,7 +22,10 @@ index = faiss.IndexFlatL2(dimension)
 
 index.add(np.array(embeddings))
 
-faiss.write_index(index, "docs.index")
-np.save("docs.npy", docs)
+index_file = "docs.index"
+npy_file = "docs.npy"
+
+faiss.write_index(index, index_file)
+np.save(npy_file, docs)
 
 print("Index created")

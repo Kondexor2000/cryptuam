@@ -359,7 +359,11 @@ def simple_xor_encrypt(data_bytes: bytes, key: bytes) -> bytes:
 # =======================================================
 # Backup AES symetryczny
 # =======================================================
-def secure_backup(data_bytes: bytes, backup_file="backup_czar.enc", meta_file="backup_meta_czar.json"):
+
+backup = "backup_czar.enc"
+meta = "backup_meta_czar.json"
+
+def secure_backup(data_bytes: bytes, backup_file=backup, meta_file=meta):
     key = os.urandom(16)
     ciphertext = simple_xor_encrypt(data_bytes, key)
 
@@ -423,7 +427,7 @@ if __name__ == "__main__":
     print("CRT solution for x ≡ 2 mod 3, x ≡ 3 mod 5:", crt([2,3],[3,5]))
 
     # Demonstracja backupu
-    sample_docs = {"example.txt": "To jest przykładowy dokument."}
+    sample_docs = {"example.txt": "Przykładowy dokument już jest bezpieczny."}
     data_bytes = json.dumps(sample_docs).encode("utf-8")
     secure_backup(data_bytes)
 

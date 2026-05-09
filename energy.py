@@ -69,11 +69,11 @@ pred_after = model.predict(X_test_saved)
 
 savings = pred_before - pred_after
 
-print(f"Średnia oszczędność energii: {np.mean(savings):.2f} kWh")
-print(f"Łączna oszczędność: {np.sum(savings):.2f} kWh")
+print(f"Średnia: {np.mean(savings):.2f} kWh")
+print(f"Suma: {np.sum(savings):.2f} kWh")
 
 # -----------------------------
-# 5. PRZYKŁAD JEDNEGO URZĄDZENIA
+# 5. EMULATOR JEDNEGO URZĄDZENIA
 # -----------------------------
 sample = pd.DataFrame([{
     "devices": 5,
@@ -82,10 +82,10 @@ sample = pd.DataFrame([{
     "eco_mode": 0
 }])
 
-normal = model.predict(sample)[0]
-eco = model.predict(sample.assign(eco_mode=1))[0]
+classic = model.predict(sample)[0]
+co2 = model.predict(sample.assign(eco_mode=1))[0]
 
-print("\nPrzykład pojedynczego przypadku:")
-print(f"Bez eco: {normal:.2f} kWh")
-print(f"Z eco:   {eco:.2f} kWh")
-print(f"Oszczędność: {normal - eco:.2f} kWh")
+print("\nSymulacja oszczędności:")
+print(f"Tradycyjny: {classic:.2f} kWh")
+print(f"Nowoczesny:   {co2:.2f} kWh")
+print(f"Różnica: {classic - co2:.2f} kWh")

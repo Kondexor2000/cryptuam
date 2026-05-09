@@ -13,26 +13,24 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 # 1️⃣ Wczytanie danych (plik lub folder)
 # =========================================
 
-INPUT_PATH = "ecg_model.pkl"  # może być plik LUB katalog
-
 docs = {}
 
-if os.path.isfile(INPUT_PATH):
+if os.path.isfile("ecg_model.pkl"):
     # pojedynczy plik
-    with open(INPUT_PATH, "rb") as f:
-        docs[os.path.basename(INPUT_PATH)] = base64.b64encode(f.read()).decode("utf-8")
+    with open("ecg_model.pkl", "rb") as f:
+        docs[os.path.basename("ecg_model.pkl")] = base64.b64encode(f.read()).decode("utf-8")
 
-elif os.path.isdir(INPUT_PATH):
+elif os.path.isdir("ecg_model.pkl"):
     # katalog
-    for file in os.listdir(INPUT_PATH):
-        path = os.path.join(INPUT_PATH, file)
+    for file in os.listdir("ecg_model.pkl"):
+        path = os.path.join("ecg_model.pkl", file)
 
         if os.path.isfile(path):
             with open(path, "rb") as f:
                 docs[file] = base64.b64encode(f.read()).decode("utf-8")
 
 else:
-    raise ValueError(f"Ścieżka nie istnieje: {INPUT_PATH}")
+    raise ValueError(f"Ścieżka nie istnieje: ecg_model.pkl")
 
 
 # JSON → bytes

@@ -7,7 +7,8 @@ import tensorflow_hub as hub
 # ----------------------------
 # 1️⃣ TensorFlow embedding model
 # ----------------------------
-embed_model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+url = "https://tfhub.dev/google/universal-sentence-encoder/4"
+embed_model = hub.load(url)
 
 def read_pdf(path):
     text = ""
@@ -43,7 +44,10 @@ faiss.normalize_L2(embeddings)
 index = faiss.IndexFlatIP(embeddings.shape[1])
 index.add(embeddings)
 
-faiss.write_index(index, "docs_sylabus.index")
-np.save("docs_sylabus.npy", docs)
+index_file = "docs_sylabus.index"
+npy_file = "docs_sylabus.npy"
+
+faiss.write_index(index, index_file)
+np.save(npy_file, docs)
 
 print("Index created (TensorFlow)")

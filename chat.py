@@ -8,13 +8,18 @@ import os
 # ----------------------------
 # 1️⃣ Embedding model (TensorFlow)
 # ----------------------------
-embed_model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+url = "https://tfhub.dev/google/universal-sentence-encoder/4"
+embed_model = hub.load(url)
 
 # ----------------------------
 # 2️⃣ Indeks + dokumenty
 # ----------------------------
-index = faiss.read_index("docs.index")
-docs = np.load("docs.npy", allow_pickle=True)
+
+index_file = "docs.index"
+npy_file = "docs.npy"
+
+index = faiss.read_index(index_file)
+docs = np.load(npy_file, allow_pickle=True)
 
 # ----------------------------
 # 3️⃣ Model QA (Flan-T5 - TensorFlow)

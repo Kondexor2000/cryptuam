@@ -13,24 +13,26 @@ from cryptography.hazmat.primitives.kdf.hkdf import HKDF
 # 1️⃣ Wczytanie danych (plik lub folder)
 # =========================================
 
+INPUT_PATH = "ecg_model.pkl"  # może być plik LUB katalog
+
 docs = {}
 
-if os.path.isfile("ecg_model.pkl"):
+if os.path.isfile(INPUT_PATH):
     # pojedynczy plik
-    with open("ecg_model.pkl", "rb") as f:
-        docs[os.path.basename("ecg_model.pkl")] = base64.b64encode(f.read()).decode("utf-8")
+    with open(INPUT_PATH, "rb") as f:
+        docs[os.path.basename(INPUT_PATH)] = base64.b64encode(f.read()).decode("utf-8")
 
-elif os.path.isdir("ecg_model.pkl"):
+elif os.path.isdir(INPUT_PATH):
     # katalog
-    for file in os.listdir("ecg_model.pkl"):
-        path = os.path.join("ecg_model.pkl", file)
+    for file in os.listdir(INPUT_PATH):
+        path = os.path.join(INPUT_PATH, file)
 
         if os.path.isfile(path):
             with open(path, "rb") as f:
                 docs[file] = base64.b64encode(f.read()).decode("utf-8")
 
 else:
-    raise ValueError(f"Ścieżka nie istnieje: ecg_model.pkl")
+    raise ValueError(f"Ścieżka ecg_model.pkl nie istnieje")
 
 
 # JSON → bytes
@@ -94,7 +96,10 @@ mac = h.finalize()
 # 6️⃣ Zapis backupu
 # =========================================
 
-with open("backup.enc", "wb") as f:
+enc_file = "backup.enc"
+meta_file = "backup_meta.json"
+
+with open(enc_file, "wb") as f:
     f.write(iv + ciphertext)
 
 meta = {
@@ -102,7 +107,7 @@ meta = {
     "hmac": base64.b64encode(mac).decode()
 }
 
-with open("backup_meta.json", "w") as f:
+with open(meta_file, "w") as f:
     json.dump(meta, f, indent=2)
 
 

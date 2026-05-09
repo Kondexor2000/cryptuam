@@ -24,8 +24,10 @@ docs = np.load(npy_file, allow_pickle=True)
 # ----------------------------
 # 3️⃣ QA model (TensorFlow)
 # ----------------------------
-qa_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-base")
-qa_tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-base")
+g_flan = "google/flan-t5-base"
+
+qa_tokenizer = AutoTokenizer.from_pretrained(g_flan)
+qa_model = AutoModelForSeq2SeqLM.from_pretrained(g_flan)
 
 qa_generator = pipeline(
     "text-generation",

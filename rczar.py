@@ -427,7 +427,7 @@ if __name__ == "__main__":
     print("CRT solution for x ≡ 2 mod 3, x ≡ 3 mod 5:", crt([2,3],[3,5]))
 
     # Demonstracja backupu
-    sample_docs = {"example.txt": "Przykładowy dokument już jest bezpieczny."}
+    sample_docs = {"example.txt": "Przykladowy dokument juz jest bezpieczny."}
     data_bytes = json.dumps(sample_docs).encode("utf-8")
     secure_backup(data_bytes)
 

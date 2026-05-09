@@ -122,7 +122,9 @@ plt.show()
 # =========================
 import joblib
 
-joblib.dump(model, "ecg_model.pkl")
+file = "ecg_model.pkl"
+
+joblib.dump(model, file)
 print("Model zapisany jako ecg_model.pkl")
 
 

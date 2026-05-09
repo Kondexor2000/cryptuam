@@ -9,13 +9,17 @@ import os
 # ----------------------------
 # 1️⃣ TensorFlow embedding model
 # ----------------------------
-embed_model = hub.load("https://tfhub.dev/google/universal-sentence-encoder/4")
+url = "https://tfhub.dev/google/universal-sentence-encoder/4"
+embed_model = hub.load(url)
 
 # ----------------------------
 # 2️⃣ FAISS + docs
 # ----------------------------
-index = faiss.read_index("docs_sylabus.index")
-docs = np.load("docs_sylabus.npy", allow_pickle=True)
+index_file = "docs_sylabus.index"
+npy_file = "docs_sylabus.npy"
+
+index = faiss.read_index(index_file)
+docs = np.load(npy_file, allow_pickle=True)
 
 # ----------------------------
 # 3️⃣ QA model (TensorFlow)

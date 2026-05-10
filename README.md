@@ -82,7 +82,7 @@ python energy.py
 ## Tech Stack
 
 - Python
-- Libraries: NumPy, Pandas, Scikit-learn, TensorFlow, Transformers, FAISS, wfdb, matplotlib
+- Libraries: NumPy, Pandas, Scikit-learn, TensorFlow, Transformers, FAISS, wfdb, matplotlib, cryptography, pqcrypto
 
 ## Contact
 

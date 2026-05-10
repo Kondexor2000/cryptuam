@@ -1,4 +1,4 @@
-import faiss
+﻿import faiss
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -66,30 +66,32 @@ except:
 # ----------------------------
 # 6️⃣ Chat loop
 # ----------------------------
-print("Mini ChatGPT (na Twoich dokumentach). Wpisz 'exit', aby zakończyć.\n")
 
-while True:
-    question = input("Ty: ")
+def main():
+    print("Mini ChatGPT (na Twoich dokumentach). Wpisz 'exit', aby zakończyć.\n")
 
-    if question.lower() in ["exit", "quit"]:
-        break
+    while True:
+        question = input("Ty: ")
 
-    # 🔒 filtr
-    if any(word in question.lower() for word in banned_words):
-        print("AI: Nie mogę wygenerować tekstów naruszających zasady etyczne.")
-        continue
+        if question.lower() in ["exit", "quit"]:
+            break
 
-    # 🔎 embedding (TensorFlow)
-    q_embedding = embed_model([question]).numpy()
-    faiss.normalize_L2(q_embedding)
+        # 🔒 filtr
+        if any(word in question.lower() for word in banned_words):
+            print("AI: Nie mogę wygenerować tekstów naruszających zasady etyczne.")
+            continue
 
-    # 🔎 search
-    D, I = index.search(np.array(q_embedding), k=5)
-    context_many = "\n".join([docs[i] for i in I[0]])
-    context_one = docs[I[0][0]]
+        # 🔎 embedding (TensorFlow)
+        q_embedding = embed_model([question]).numpy()
+        faiss.normalize_L2(q_embedding)
 
-    # 🧠 prompt QA
-    prompt_many = f"""
+        # 🔎 search
+        D, I = index.search(np.array(q_embedding), k=5)
+        context_many = "\n".join([docs[i] for i in I[0]])
+        context_one = docs[I[0][0]]
+
+        # 🧠 prompt QA
+        prompt_many = f"""
 Odpowiedz na pytanie na podstawie kontekstu.
 
 Kontekst:
@@ -101,7 +103,7 @@ Pytanie:
 Odpowiedź:
 """
 
-    prompt_one = f"""
+        prompt_one = f"""
 Odpowiedz na pytanie na podstawie kontekstu.
 
 Kontekst:
@@ -113,56 +115,60 @@ Pytanie:
 Odpowiedź:
 """
 
-    result_many = qa_generator(prompt_many)
-    answer_many = result_many[0]["generated_text"].strip()
+        result_many = qa_generator(prompt_many)
+        answer_many = result_many[0]["generated_text"].strip()
 
-    result_one = qa_generator(prompt_one)
-    answer_one = result_one[0]["generated_text"].strip()
+        result_one = qa_generator(prompt_one)
+        answer_one = result_one[0]["generated_text"].strip()
 
-    # 💡 pomysły
-    idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
-    idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
+        # 💡 pomysły
+        idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
+        idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
 
-    ideas_output_many = idea_generator(
-        idea_prompt_many,
-        max_new_tokens=60,
-        do_sample=True,
-        temperature=0.9,
-        top_p=0.9,
-        num_return_sequences=3
-    )
+        ideas_output_many = idea_generator(
+            idea_prompt_many,
+            max_new_tokens=60,
+            do_sample=True,
+            temperature=0.9,
+            top_p=0.9,
+            num_return_sequences=3
+        )
 
-    ideas_output_one = idea_generator(
-        idea_prompt_one,
-        max_new_tokens=60,
-        do_sample=True,
-        temperature=0.9,
-        top_p=0.9,
-        num_return_sequences=3
-    )
+        ideas_output_one = idea_generator(
+            idea_prompt_one,
+            max_new_tokens=60,
+            do_sample=True,
+            temperature=0.9,
+            top_p=0.9,
+            num_return_sequences=3
+        )
 
-    ideas_many = []
-    for o in ideas_output_many:
-        text = o["generated_text"].replace(idea_prompt_many, "").strip()
-        ideas_many.append(text.split("\n")[0])
+        ideas_many = []
+        for o in ideas_output_many:
+            text = o["generated_text"].replace(idea_prompt_many, "").strip()
+            ideas_many.append(text.split("\n")[0])
 
-    ideas_one = []
-    for o in ideas_output_one:
-        text = o["generated_text"].replace(idea_prompt_one, "").strip()
-        ideas_one.append(text.split("\n")[0])
+        ideas_one = []
+        for o in ideas_output_one:
+            text = o["generated_text"].replace(idea_prompt_one, "").strip()
+            ideas_one.append(text.split("\n")[0])
 
-    # 📢 output
-    print("\nAI_out:", answer_many)
-    print("\nAI_in:", answer_one)
+        # 📢 output
+        print("\nAI_out:", answer_many)
+        print("\nAI_in:", answer_one)
 
-    if ideas_many:
-        print("\n💡 Pomysły_zewnętrzne:")
-        for i, idea in enumerate(ideas_many, 1):
-            print(f"{i}. {idea}")
+        if ideas_many:
+            print("\n💡 Pomysły_zewnętrzne:")
+            for i, idea in enumerate(ideas_many, 1):
+                print(f"{i}. {idea}")
 
-    if ideas_one:
-        print("\n💡 Pomysły_wewnętrzne:")
-        for i, idea in enumerate(ideas_one, 1):
-            print(f"{i}. {idea}")
+        if ideas_one:
+            print("\n💡 Pomysły_wewnętrzne:")
+            for i, idea in enumerate(ideas_one, 1):
+                print(f"{i}. {idea}")
 
-    print("\n" + "-"*50)
+        print("\n" + "-"*50)
+
+
+if __name__ == "__main__":
+    main()

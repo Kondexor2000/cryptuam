@@ -1,4 +1,4 @@
-import faiss
+﻿import faiss
 import numpy as np
 import tensorflow as tf
 import tensorflow_hub as hub
@@ -55,31 +55,33 @@ idea_generator = pipeline(
 # ----------------------------
 # 6️⃣ Chat loop
 # ----------------------------
-print("Mini ChatGPT (TensorFlow + sylabus). Wpisz 'exit'\n")
 
-while True:
-    question = input("Ty: ")
+def main():
+    print("Mini ChatGPT (TensorFlow + sylabus). Wpisz 'exit'\n")
 
-    if question.lower() in ["exit", "quit"]:
-        break
+    while True:
+        question = input("Ty: ")
 
-    # ----------------------------
-    # embedding (TF)
-    # ----------------------------
-    q_embedding = embed_model([question]).numpy().astype("float32")
-    faiss.normalize_L2(q_embedding)
+        if question.lower() in ["exit", "quit"]:
+            break
 
-    # ----------------------------
-    # search
-    # ----------------------------
-    D, I = index.search(q_embedding, k=5)
-    context_many = "\n".join([docs[i] for i in I[0]])
-    context_one = docs[I[0][0]]
+        # ----------------------------
+        # embedding (TF)
+        # ----------------------------
+        q_embedding = embed_model([question]).numpy().astype("float32")
+        faiss.normalize_L2(q_embedding)
 
-    # ----------------------------
-    # prompts
-    # ----------------------------
-    prompt_many = f"""
+        # ----------------------------
+        # search
+        # ----------------------------
+        D, I = index.search(q_embedding, k=5)
+        context_many = "\n".join([docs[i] for i in I[0]])
+        context_one = docs[I[0][0]]
+
+        # ----------------------------
+        # prompts
+        # ----------------------------
+        prompt_many = f"""
 Odpowiedz na pytanie na podstawie kontekstu.
 
 Kontekst:
@@ -91,7 +93,7 @@ Pytanie:
 Odpowiedź:
 """
 
-    prompt_one = f"""
+        prompt_one = f"""
 Odpowiedz na pytanie na podstawie kontekstu.
 
 Kontekst:
@@ -103,48 +105,52 @@ Pytanie:
 Odpowiedź:
 """
 
-    answer_many = qa_generator(prompt_many)[0]["generated_text"]
-    answer_one = qa_generator(prompt_one)[0]["generated_text"]
+        answer_many = qa_generator(prompt_many)[0]["generated_text"]
+        answer_one = qa_generator(prompt_one)[0]["generated_text"]
 
-    # ----------------------------
-    # ideas
-    # ----------------------------
-    idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
-    idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
+        # ----------------------------
+        # ideas
+        # ----------------------------
+        idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
+        idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
 
-    ideas_many = idea_generator(
-        idea_prompt_many,
-        max_new_tokens=60,
-        do_sample=True,
-        temperature=0.9,
-        top_p=0.9,
-        num_return_sequences=3
-    )
+        ideas_many = idea_generator(
+            idea_prompt_many,
+            max_new_tokens=60,
+            do_sample=True,
+            temperature=0.9,
+            top_p=0.9,
+            num_return_sequences=3
+        )
 
-    ideas_one = idea_generator(
-        idea_prompt_one,
-        max_new_tokens=60,
-        do_sample=True,
-        temperature=0.9,
-        top_p=0.9,
-        num_return_sequences=3
-    )
+        ideas_one = idea_generator(
+            idea_prompt_one,
+            max_new_tokens=60,
+            do_sample=True,
+            temperature=0.9,
+            top_p=0.9,
+            num_return_sequences=3
+        )
 
-    # ----------------------------
-    # output
-    # ----------------------------
-    print("\nAI_out:", secure_backup(answer_many.strip().encode("utf-8")))
-    print("\nAI_in:", secure_backup(answer_one.strip().encode("utf-8")))
+        # ----------------------------
+        # output
+        # ----------------------------
+        print("\nAI_out:", secure_backup(answer_many.strip().encode("utf-8")))
+        print("\nAI_in:", secure_backup(answer_one.strip().encode("utf-8")))
 
-    print("\nAI_out:", answer_many.strip())
-    print("\nAI_in:", answer_one.strip())
+        print("\nAI_out:", answer_many.strip())
+        print("\nAI_in:", answer_one.strip())
 
-    print("\n💡 Pomysły_zewnętrzne:")
-    for i, o in enumerate(ideas_many, 1):
-        print(i, secure_backup(o["generated_text"].replace(idea_prompt_many, "").strip().split("\n")[0].encode("utf-8")))
+        print("\n💡 Pomysły_zewnętrzne:")
+        for i, o in enumerate(ideas_many, 1):
+            print(i, secure_backup(o["generated_text"].replace(idea_prompt_many, "").strip().split("\n")[0].encode("utf-8")))
 
-    print("\n💡 Pomysły_wewnętrzne:")
-    for i, o in enumerate(ideas_one, 1):
-        print(i, secure_backup(o["generated_text"].replace(idea_prompt_one, "").strip().split("\n")[0].encode("utf-8")))
+        print("\n💡 Pomysły_wewnętrzne:")
+        for i, o in enumerate(ideas_one, 1):
+            print(i, secure_backup(o["generated_text"].replace(idea_prompt_one, "").strip().split("\n")[0].encode("utf-8")))
 
-    print("\n" + "-"*50)
+        print("\n" + "-"*50)
+
+
+if __name__ == "__main__":
+    main()

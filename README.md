@@ -1,53 +1,90 @@
-# Eduworknet
+# AI Developer Portfolio
 
-    Please run git clone https://github.com/Kondexor2000/cryptuam.git
+This repository contains a portfolio of four independent projects developed for educational purposes at UAM (Adam Mickiewicz University) in Poznań, Poland. Each project demonstrates different aspects of Python programming, machine learning, and data processing.
 
-    2a. Please run python secure_backup.py if the files are large or if more advanced security is a priority.
+## Projects
 
-    2b. Please run python rczar.py if this is for scientific/research purposes or if speed is the priority (backup is created faster).
+### Project 1: ECG Arrhythmia Detection
+A machine learning project for detecting arrhythmias in ECG signals using Random Forest classification.
 
-    2c. Please run python index.py and then chat.py if the goal is not security, but AI (research-related content generation).
+**Files:** cardio.py, secure_backup.py, cardio_tests.py
 
-In case 2c expansion is planned AI about application possibility in needs graphics, applications etc. It would shorten this time on brainstorming about 70%. Refer to 2a and 2b, the faster is being processed backup the less will safe.
-
-In Polish: Projekt wykonywany w celu zaliczeń zaległych przedmiotów na studiach informatycznych UAM
-
-DRY: Not required
-
----
-
-## Contents
-
-- [Installation](#installation)
-- [Configuration](#configuration)
-- [Functions](#functions)
-- [Tech stack](#tech-stack)
-- [Contact](#contact)
-
-## Installation
-
+**Installation:**
 ```bash
 git clone https://github.com/Kondexor2000/cryptuam.git
 cd cryptuam
+# Copy cardio.py, secure_backup.py, cardio_tests.py to your project directory
 ```
 
-## Configuration
-
+**Run:**
 ```bash
-python secure_backup.py || python rczar.py || python index.py
-                                              python chat.py
+python cardio_tests.py  # Run tests
+python cardio.py
+python secure_backup.py
 ```
 
-## Functions
+### Project 2: Document-Based Chatbot
+An AI-powered chatbot that answers questions based on indexed documents using FAISS and transformers.
 
-- Data security testing
-- NLP testing
+**Files:** index.py, chat.py, chat_tests.py
 
-## Tech stack
+**Installation:**
+```bash
+git clone https://github.com/Kondexor2000/cryptuam.git
+cd cryptuam
+# Copy docs, docs_not, index.py, chat.py, chat_tests.py to your project directory
+```
+
+**Run:**
+```bash
+python index.py  # Index documents
+python chat_tests.py  # Run tests
+python chat.py   # Start chatbot
+```
+
+### Project 3: Syllabus Chatbot
+A specialized chatbot for educational content, with secure backup functionality.
+
+**Files:** index_sylabus.py, rczar.py, chat_sylabus.py, chat_sylabus_tests.py
+
+**Installation:**
+```bash
+git clone https://github.com/Kondexor2000/cryptuam.git
+cd cryptuam
+# Copy sylabus, index_sylabus.py, rczar.py, chat_sylabus.py, chat_sylabus_tests.py to your project directory
+```
+
+**Run:**
+```bash
+python index_sylabus.py  # Index syllabus documents
+python chat_sylabus_tests.py  # Run tests
+python chat_sylabus.py   # Start syllabus chatbot
+```
+
+### Project 4: Energy Consumption Simulator
+A simulation tool for predicting energy usage in devices using machine learning regression.
+
+**Files:** energy.py, energy_tests.py
+
+**Installation:**
+```bash
+git clone https://github.com/Kondexor2000/cryptuam.git
+cd cryptuam
+# Copy energy.py, energy_tests.py to your project directory
+```
+
+**Run:**
+```bash
+python energy_tests.py  # Run tests
+python energy.py
+```
+
+## Tech Stack
 
 - Python
-- tools with imports in code
+- Libraries: NumPy, Pandas, Scikit-learn, TensorFlow, Transformers, FAISS, wfdb, matplotlib
 
 ## Contact
 
-- If you have any questions or suggestions, get in touch with us on e-mail address: k.kosciecha20@gmail.com
+- Email: k.kosciecha20@gmail.com
+

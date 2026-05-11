@@ -1,0 +1,364 @@
+<!doctype html>
+<html lang="pl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI Developer Portfolio API</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --text: #162033;
+      --muted: #637083;
+      --border: #d9e1ec;
+      --accent: #0f766e;
+      --accent-dark: #0b5f59;
+      --danger: #b42318;
+      --code: #101828;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: Arial, Helvetica, sans-serif;
+      line-height: 1.5;
+    }
+
+    header {
+      background: #132238;
+      color: #ffffff;
+      padding: 28px 18px;
+    }
+
+    header > div,
+    main {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+    }
+
+    h1,
+    h2 {
+      margin: 0;
+      line-height: 1.15;
+    }
+
+    h1 {
+      font-size: clamp(28px, 5vw, 44px);
+    }
+
+    h2 {
+      font-size: 22px;
+    }
+
+    p {
+      margin: 8px 0 0;
+      color: var(--muted);
+    }
+
+    header p {
+      color: #c8d3e4;
+      max-width: 760px;
+    }
+
+    main {
+      padding: 28px 0 44px;
+    }
+
+    .status {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 16px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+
+    .status strong {
+      color: var(--accent-dark);
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 18px;
+    }
+
+    section {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 18px;
+      min-width: 0;
+    }
+
+    label {
+      display: block;
+      margin-top: 14px;
+      font-weight: 700;
+      font-size: 14px;
+    }
+
+    input,
+    textarea {
+      width: 100%;
+      margin-top: 6px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px 11px;
+      font: inherit;
+      color: var(--text);
+      background: #ffffff;
+    }
+
+    textarea {
+      min-height: 104px;
+      resize: vertical;
+    }
+
+    .row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      width: 100%;
+      margin-top: 16px;
+      border: 0;
+      border-radius: 6px;
+      padding: 11px 12px;
+      background: var(--accent);
+      color: #ffffff;
+      font: inherit;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--accent-dark);
+    }
+
+    button.secondary {
+      background: #41556f;
+    }
+
+    button.secondary:hover {
+      background: #34465e;
+    }
+
+    pre {
+      margin: 14px 0 0;
+      padding: 12px;
+      background: var(--code);
+      color: #eff6ff;
+      border-radius: 6px;
+      overflow: auto;
+      min-height: 132px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 13px;
+    }
+
+    .error {
+      color: var(--danger);
+      font-weight: 700;
+    }
+
+    @media (max-width: 920px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .status,
+      .row {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>AI Developer Portfolio API</h1>
+      <p>Panel testowy dla backendu projektow 1, 3 i 4. Wypelnij formularz i sprawdz odpowiedz JSON z lokalnego API.</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="status">
+      <div>
+        <strong>Status backendu:</strong>
+        <span id="healthText">sprawdzanie...</span>
+      </div>
+      <button class="secondary" id="healthButton" type="button">Odśwież status</button>
+    </div>
+
+    <div class="grid">
+      <section>
+        <h2>Projekt 1: ECG</h2>
+        <p>Predykcja uderzenia serca na podstawie 200 probek sygnalu.</p>
+
+        <label for="ecgBeat">Lista 200 probek JSON</label>
+        <textarea id="ecgBeat"></textarea>
+
+        <button class="secondary" id="fillEcgButton" type="button">Wstaw przykladowe probki</button>
+        <button id="ecgButton" type="button">Sprawdz ECG</button>
+        <pre id="ecgOutput">Brak odpowiedzi.</pre>
+      </section>
+
+      <section>
+        <h2>Projekt 3: Sylabus</h2>
+        <p>Pytanie do chatbota o tresci z zaindeksowanych plikow sylabusa.</p>
+
+        <label for="syllabusQuestion">Pytanie</label>
+        <textarea id="syllabusQuestion">Jakie sa efekty uczenia sie?</textarea>
+
+        <button id="syllabusButton" type="button">Zapytaj chatbota</button>
+        <pre id="syllabusOutput">Brak odpowiedzi.</pre>
+      </section>
+
+      <section>
+        <h2>Projekt 4: Energia</h2>
+        <p>Symulacja zuzycia energii i oszczednosci trybu eco.</p>
+
+        <div class="row">
+          <div>
+            <label for="devices">Urzadzenia</label>
+            <input id="devices" type="number" min="1" step="1" value="5">
+          </div>
+          <div>
+            <label for="hours">Godziny</label>
+            <input id="hours" type="number" min="0" step="0.5" value="10">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label for="efficiency">Wydajnosc 0-1</label>
+            <input id="efficiency" type="number" min="0" max="1" step="0.05" value="0.6">
+          </div>
+          <div>
+            <label for="ecoMode">Eco mode 0/1</label>
+            <input id="ecoMode" type="number" min="0" max="1" step="1" value="0">
+          </div>
+        </div>
+
+        <button id="energyButton" type="button">Policz zuzycie</button>
+        <pre id="energyOutput">Brak odpowiedzi.</pre>
+      </section>
+    </div>
+  </main>
+
+  <script>
+    const api = async (path, options = {}) => {
+      const response = await fetch(path, {
+        headers: { "Content-Type": "application/json" },
+        ...options
+      });
+      const text = await response.text();
+      let payload;
+
+      try {
+        payload = JSON.parse(text);
+      } catch {
+        payload = { raw: text };
+      }
+
+      if (!response.ok) {
+        throw new Error(JSON.stringify(payload, null, 2));
+      }
+
+      return payload;
+    };
+
+    const writeOutput = (id, payload) => {
+      document.getElementById(id).textContent = JSON.stringify(payload, null, 2);
+      document.getElementById(id).classList.remove("error");
+    };
+
+    const writeError = (id, error) => {
+      const output = document.getElementById(id);
+      output.textContent = error.message || String(error);
+      output.classList.add("error");
+    };
+
+    const fillEcgSamples = () => {
+      const samples = Array.from({ length: 200 }, (_, index) => {
+        const x = index / 12;
+        return Number((Math.sin(x) * 0.8 + Math.sin(x * 3) * 0.15).toFixed(4));
+      });
+      document.getElementById("ecgBeat").value = JSON.stringify(samples);
+    };
+
+    const checkHealth = async () => {
+      const healthText = document.getElementById("healthText");
+      try {
+        const result = await api("/api/health");
+        healthText.textContent = `${result.status}, projekty: ${result.projects.join(", ")}`;
+      } catch (error) {
+        healthText.textContent = "blad polaczenia";
+      }
+    };
+
+    document.getElementById("fillEcgButton").addEventListener("click", fillEcgSamples);
+    document.getElementById("healthButton").addEventListener("click", checkHealth);
+
+    document.getElementById("ecgButton").addEventListener("click", async () => {
+      try {
+        const beat = JSON.parse(document.getElementById("ecgBeat").value);
+        const result = await api("/api/project1/ecg/predict", {
+          method: "POST",
+          body: JSON.stringify({ beat })
+        });
+        writeOutput("ecgOutput", result);
+      } catch (error) {
+        writeError("ecgOutput", error);
+      }
+    });
+
+    document.getElementById("syllabusButton").addEventListener("click", async () => {
+      try {
+        const question = document.getElementById("syllabusQuestion").value;
+        const result = await api("/api/project3/syllabus/ask", {
+          method: "POST",
+          body: JSON.stringify({ question })
+        });
+        writeOutput("syllabusOutput", result);
+      } catch (error) {
+        writeError("syllabusOutput", error);
+      }
+    });
+
+    document.getElementById("energyButton").addEventListener("click", async () => {
+      try {
+        const result = await api("/api/project4/energy/predict", {
+          method: "POST",
+          body: JSON.stringify({
+            devices: Number(document.getElementById("devices").value),
+            hours: Number(document.getElementById("hours").value),
+            efficiency: Number(document.getElementById("efficiency").value),
+            eco_mode: Number(document.getElementById("ecoMode").value)
+          })
+        });
+        writeOutput("energyOutput", result);
+      } catch (error) {
+        writeError("energyOutput", error);
+      }
+    });
+
+    fillEcgSamples();
+    checkHealth();
+  </script>
+</body>
+</html>

@@ -26,6 +26,7 @@ for file in os.listdir(docs_dir):
 
 # Generowanie embeddingów
 embeddings = model(docs).numpy()
+faiss.normalize_L2(embeddings)
 
 dimension = embeddings.shape[1]
 index = faiss.IndexFlatL2(dimension)

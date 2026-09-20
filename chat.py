@@ -80,6 +80,33 @@ except:
 # 6️⃣ Chat loop
 # ----------------------------
 
+def generate_ideas(answer, language="pl", limit=3):
+    if language == "pl":
+        prompt = f"Temat: {answer}\nPodaj {limit} krótkie, merytoryczne pomysły po polsku:\n"
+    else:
+        prompt = f"Topic: {answer}\nGive {limit} short, meaningful ideas in English:\n"
+
+    outputs = idea_generator(
+        prompt,
+        max_new_tokens=80,
+        do_sample=True,
+        temperature=0.9,
+        top_p=0.9,
+        num_return_sequences=3,
+    )
+
+    ideas = []
+    for item in outputs:
+        text = item["generated_text"].replace(prompt, "").strip()
+        for line in text.splitlines():
+            cleaned = line.strip().lstrip("-*. 0123456789")
+            if cleaned and cleaned not in ideas:
+                ideas.append(cleaned)
+            if len(ideas) >= limit:
+                return ideas[:limit]
+    return ideas[:limit]
+
+
 def main():
     print("Mini ChatGPT (na Twoich dokumentach). Wpisz 'exit', aby zakończyć.\n")
 
@@ -134,50 +161,33 @@ Odpowiedź:
         result_one = qa_generator(prompt_one)
         answer_one = result_one[0]["generated_text"].strip()
 
-        # 💡 pomysły
-        idea_prompt_many = f"Temat: {answer_many}\nPomysły:\n"
-        idea_prompt_one = f"Temat: {answer_one}\nPomysły:\n"
-
-        ideas_output_many = idea_generator(
-            idea_prompt_many,
-            max_new_tokens=60,
-            do_sample=True,
-            temperature=0.9,
-            top_p=0.9,
-            num_return_sequences=3
-        )
-
-        ideas_output_one = idea_generator(
-            idea_prompt_one,
-            max_new_tokens=60,
-            do_sample=True,
-            temperature=0.9,
-            top_p=0.9,
-            num_return_sequences=3
-        )
-
-        ideas_many = []
-        for o in ideas_output_many:
-            text = o["generated_text"].replace(idea_prompt_many, "").strip()
-            ideas_many.append(text.split("\n")[0])
-
-        ideas_one = []
-        for o in ideas_output_one:
-            text = o["generated_text"].replace(idea_prompt_one, "").strip()
-            ideas_one.append(text.split("\n")[0])
+        ideas_many_pl = generate_ideas(answer_many, language="pl")
+        ideas_many_en = generate_ideas(answer_many, language="en")
+        ideas_one_pl = generate_ideas(answer_one, language="pl")
+        ideas_one_en = generate_ideas(answer_one, language="en")
 
         # 📢 output
         print("\nAI_out:", answer_many)
         print("\nAI_in:", answer_one)
 
-        if ideas_many:
-            print("\n💡 Pomysły_zewnętrzne:")
-            for i, idea in enumerate(ideas_many, 1):
+        if ideas_many_pl:
+            print("\n💡 Pomysły_zewnętrzne (PL):")
+            for i, idea in enumerate(ideas_many_pl, 1):
                 print(f"{i}. {idea}")
 
-        if ideas_one:
-            print("\n💡 Pomysły_wewnętrzne:")
-            for i, idea in enumerate(ideas_one, 1):
+        if ideas_many_en:
+            print("\n💡 Pomysły_zewnętrzne (EN):")
+            for i, idea in enumerate(ideas_many_en, 1):
+                print(f"{i}. {idea}")
+
+        if ideas_one_pl:
+            print("\n💡 Pomysły_wewnętrzne (PL):")
+            for i, idea in enumerate(ideas_one_pl, 1):
+                print(f"{i}. {idea}")
+
+        if ideas_one_en:
+            print("\n💡 Pomysły_wewnętrzne (EN):")
+            for i, idea in enumerate(ideas_one_en, 1):
                 print(f"{i}. {idea}")
 
         print("\n" + "-"*50)

@@ -1,2 +1,103 @@
-słowa wulgarne
-wulgaryzmy
+cough
+headache
+rash
+temperature
+sunburn
+being sick
+vomiting
+sneezing
+swollen
+hurts
+aches
+bleeding
+a sore throat
+diarhoea
+feels sick
+fainted
+blister
+a cold
+flu
+dizzy
+cut himself
+unconscious
+allergic reaction
+sprained
+high blood pressure
+food poisoning
+choking
+burnt
+came round
+passed out
+get over
+throw up
+loose
+tight
+hooded
+long-sleeved
+polo neck
+sleeveless
+v-neck
+checked
+patterned
+plain
+spotted
+striped
+a cotton vest
+a fur collar
+a linen suit
+a silk scarf
+a woollen cardigan
+leather sandals
+suede boots
+casual
+classic
+old-fashioned
+scruffy
+smart
+dress up
+fit
+suits
+matches
+get dressed
+get undressed
+ankle
+calf
+heel
+knee
+elbow
+fist
+nails
+palm
+wrist
+bottom
+chest
+hip
+thigh
+waist
+brain
+heart
+kidneys
+liver
+lungs
+bite
+blow
+brush
+comb
+fold
+hold
+touch
+suck
+shake
+shrug
+raise
+winked
+chew
+hugged
+scratch
+waved
+kneel
+frowned
+stared
+yawned
+stretched
+point

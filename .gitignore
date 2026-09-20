@@ -9,3 +9,4 @@ docs_sylabus.npy
 ecg_model.pkl
 __pycache__
 work
+.env

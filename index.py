@@ -4,14 +4,24 @@ import tensorflow_hub as hub
 import faiss
 import numpy as np
 
+
+def resolve_docs_dir():
+    if os.path.isdir("docs") and os.listdir("docs"):
+        return "docs"
+    if os.path.isdir("docs_not") and os.listdir("docs_not"):
+        return "docs_not"
+    return "docs"
+
+
 # Załaduj model embeddingów z TensorFlow Hub
 
 url = "https://tfhub.dev/google/universal-sentence-encoder/4"
 model = hub.load(url)
 
+docs_dir = resolve_docs_dir()
 docs = []
-for file in os.listdir("docs"):
-    with open(f"docs/{file}", "r", encoding="utf-8") as f:
+for file in os.listdir(docs_dir):
+    with open(f"{docs_dir}/{file}", "r", encoding="utf-8") as f:
         docs.append(f.read())
 
 # Generowanie embeddingów

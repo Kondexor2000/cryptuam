@@ -87,6 +87,11 @@ class ChatTests(unittest.TestCase):
         module = load_chat_module()
         self.assertEqual(module.banned_words, ["bad"])
 
+    def test_docs_folder_is_preferred_over_docs_not(self):
+        module = load_chat_module()
+        with patch("os.path.isdir", side_effect=lambda path: path == "docs" or path == "docs_not"):
+            self.assertEqual(module.resolve_docs_dir(), "docs")
+
     def test_main_exits_immediately(self):
         module = load_chat_module()
         with patch("builtins.input", side_effect=["exit"]):

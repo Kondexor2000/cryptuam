@@ -5,6 +5,15 @@ import tensorflow_hub as hub
 from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
 import os
 
+
+def resolve_docs_dir():
+    if os.path.isdir("docs") and os.listdir("docs"):
+        return "docs"
+    if os.path.isdir("docs_not") and os.listdir("docs_not"):
+        return "docs_not"
+    return "docs"
+
+
 # ----------------------------
 # 1️⃣ Embedding model (TensorFlow)
 # ----------------------------
@@ -17,6 +26,8 @@ embed_model = hub.load(url)
 
 index_file = "docs.index"
 npy_file = "docs.npy"
+
+docs_dir = resolve_docs_dir()
 
 index = faiss.read_index(index_file)
 docs = np.load(npy_file, allow_pickle=True)
@@ -57,9 +68,11 @@ idea_generator = pipeline(
 # 5️⃣ banned words
 # ----------------------------
 try:
-    for file in os.listdir("docs_not"):
-        with open(f"docs_not/{file}", "r", encoding="utf-8") as f:
-            banned_words = [line.strip().lower() for line in f.readlines()]
+    banned_dir = "docs_not" if os.path.isdir("docs_not") else "docs"
+    banned_words = []
+    for file in os.listdir(banned_dir):
+        with open(f"{banned_dir}/{file}", "r", encoding="utf-8") as f:
+            banned_words.extend(line.strip().lower() for line in f.readlines() if line.strip())
 except:
     banned_words = []
 

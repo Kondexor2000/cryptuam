@@ -2,6 +2,10 @@
 
 This repository contains only the document-based chatbot project.
 
+## Extension suggestions
+
+git clone https://github.com/Kondexor2000/docker_for_opencv.git
+
 ## Project 2: Document-Based Chatbot
 An AI-powered chatbot that answers questions based on indexed documents using FAISS and TensorFlow/Transformers.
 

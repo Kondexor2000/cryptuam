@@ -1,29 +1,44 @@
-# AI Developer Portfolio
+# AI Research & Development Lab
 
-This repository contains only the document-based chatbot project.
+Repozytorium zawiera prototypy chatbota opartego na dokumentach oraz mały generator propozycji eksperymentu dotyczącego nauki słownictwa. Generator korzysta z lokalnych list w `docs` i `docs_not`; nie trenuje modelu ani nie przedstawia wyników empirycznych.
 
-## Extension suggestions
+## Generator briefu badawczego
 
-git clone https://github.com/Kondexor2000/docker_for_opencv.git
+Uruchom z katalogu projektu:
 
-## Project 2: Document-Based Chatbot
-An AI-powered chatbot that answers questions based on indexed documents using FAISS and TensorFlow/Transformers.
-
-**Files:** index.py, chat.py, chat_tests.py, docs/, docs_not/
-
-**Run locally:**
 ```bash
-python index.py
-python chat_tests.py
-python chat.py
+python research_lab.py
 ```
 
-## Tech Stack
+Aby otrzymać wynik maszynowy:
 
-- Python
-- Libraries: NumPy, TensorFlow, TensorFlow Hub, Transformers, FAISS
+```bash
+python research_lab.py --json
+```
 
-## Contact
+Domyślnie skrypt:
 
-- Email: k.kosciecha20@gmail.com
+- czyta niepuste wiersze z plików `docs/*.txt` jako materiał do nauki;
+- traktuje niepuste wiersze z `docs_not/*.txt` jako wpisy do wykluczenia;
+- wyklucza tylko dokładne dopasowania po normalizacji wielkości liter, odstępów i interpunkcji;
+- raportuje liczbę wpisów źródłowych, uwzględnionych i wykluczonych oraz przykłady i niedopasowane wykluczenia.
 
+Pliki Markdown i inne pliki niż `.txt` nie są wczytywane jako listy słownictwa. Katalogi można wskazać jawnie:
+
+```bash
+python research_lab.py --docs-dir ścieżka/do/docs --exclusions-dir ścieżka/do/docs_not
+```
+
+Założenia pytania badawczego i proponowany eksperyment opisuje [brief badawczy](docs/RD_RESEARCH_BRIEF.md).
+
+## Testy
+
+Testy generatora sprawdzają wczytywanie list, dokładne wykluczanie wpisów, obsługę niepasujących fraz oraz format JSON. Uruchom je poleceniem:
+
+```bash
+python -m unittest research_lab_tests.py
+```
+
+## Wcześniejszy prototyp chatbota
+
+`index.py`, `chat.py` i `chat_tests.py` pochodzą z wcześniejszego prototypu chatbota bazującego na indeksie FAISS. `research_lab.py` nie wywołuje tych skryptów ani nie korzysta z indeksu. Są to odrębne ścieżki w repozytorium.

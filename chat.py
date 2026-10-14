@@ -240,7 +240,7 @@ def _fallback_answer(question, context):
     return best_line[:500]
 
 
-def generate_ideas(answer, language="pl", limit=3):
+def generate_ideas(answer, language="pl", limit=3, mode=0):
     if not answer:
         return []
 
@@ -251,12 +251,24 @@ def generate_ideas(answer, language="pl", limit=3):
         "na", "the", "in", "on"
     }
 
+    mode = max(0, min(3, int(mode)))
+    mode_prompts = {
+        0: "brief, direct, and practical",
+        1: "clear, polished, and user-focused",
+        2: "creative, bold, and original",
+        3: "analytical, strategic, and actionable",
+    }
+
     if idea_generator is not None:
         try:
             if language == "pl":
                 prompt = f"Temat: {answer}\nPodaj {limit} krótkie, merytoryczne pomysły po polsku:\n"
             else:
-                prompt = f"Topic: {answer}\nGive {limit} short, meaningful ideas in English:\n"
+                style = mode_prompts.get(mode, mode_prompts[0])
+                prompt = (
+                    f"Topic: {answer}\n"
+                    f"Generate {limit} short, meaningful ideas in English in a {style} style.\n"
+                )
 
             outputs = idea_generator(
                 prompt,
@@ -366,9 +378,15 @@ Odpowiedź:
             answer_one = _fallback_answer(question, context_one)
 
         ideas_many_pl = generate_ideas(answer_many, language="pl")
-        ideas_many_en = generate_ideas(answer_many, language="en")
+        ideas_many_en = [
+            generate_ideas(answer_many, language="en", mode=mode)
+            for mode in range(4)
+        ]
         ideas_one_pl = generate_ideas(answer_one, language="pl")
-        ideas_one_en = generate_ideas(answer_one, language="en")
+        ideas_one_en = [
+            generate_ideas(answer_one, language="en", mode=mode)
+            for mode in range(4)
+        ]
 
         print("\nAI_out:", answer_many)
         print("\nAI_in:", answer_one)
@@ -378,20 +396,22 @@ Odpowiedź:
             for i, idea in enumerate(ideas_many_pl, 1):
                 print(f"{i}. {idea}")
 
-        if ideas_many_en:
-            print("\n💡 Pomysły_zewnętrzne (EN):")
-            for i, idea in enumerate(ideas_many_en, 1):
-                print(f"{i}. {idea}")
+        for mode, ideas in enumerate(ideas_many_en):
+            if ideas:
+                print(f"\n💡 Pomysły_zewnętrzne (EN, Mode {mode}):")
+                for i, idea in enumerate(ideas, 1):
+                    print(f"{i}. [Mode {mode}] {idea}")
 
         if ideas_one_pl:
             print("\n💡 Pomysły_wewnętrzne (PL):")
             for i, idea in enumerate(ideas_one_pl, 1):
                 print(f"{i}. {idea}")
 
-        if ideas_one_en:
-            print("\n💡 Pomysły_wewnętrzne (EN):")
-            for i, idea in enumerate(ideas_one_en, 1):
-                print(f"{i}. {idea}")
+        for mode, ideas in enumerate(ideas_one_en):
+            if ideas:
+                print(f"\n💡 Pomysły_wewnętrzne (EN, Mode {mode}):")
+                for i, idea in enumerate(ideas, 1):
+                    print(f"{i}. [Mode {mode}] {idea}")
 
         print("\n" + "-" * 50)
 

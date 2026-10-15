@@ -98,6 +98,42 @@ class ChatTests(unittest.TestCase):
             with patch("builtins.print"):
                 module.main()
 
+    def test_extract_keywords_filters_stop_words_and_duplicates(self):
+        module = load_chat_module()
+        self.assertEqual(
+            module.extract_keywords(
+                "Projekt aplikacji dla uczniów, aplikacji mobilnej i szkół"
+            ),
+            ["Projekt", "aplikacji", "uczniów"],
+        )
+        self.assertEqual(
+            module.extract_keywords("Build a useful learning platform"),
+            ["Build", "useful", "learning"],
+        )
+        self.assertEqual(module.extract_keywords("No keywords here", limit=0), [])
+
+    def test_main_prints_keywords_for_external_and_internal_ideas(self):
+        module = load_chat_module()
+        module.docs = ["Projekt aplikacji mobilnej dla uczniów"]
+        module.banned_words = []
+        module.qa_generator = None
+        module.idea_generator = None
+
+        printed = []
+        with patch("builtins.input", side_effect=["projekt aplikacji", "exit"]):
+            with patch.object(
+                module,
+                "_find_best_context",
+                return_value=("Projekt aplikacji mobilnej dla uczniów", []),
+            ):
+                with patch("builtins.print", side_effect=lambda *args: printed.append(args)):
+                    module.main()
+
+        output = "\n".join(" ".join(map(str, line)) for line in printed)
+        self.assertIn("Pomysły_zewnętrzne (PL)", output)
+        self.assertIn("Pomysły_wewnętrzne (PL)", output)
+        self.assertGreaterEqual(output.count("Słowa kluczowe:"), 2)
+
 
 if __name__ == "__main__":
     unittest.main()

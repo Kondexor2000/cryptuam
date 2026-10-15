@@ -42,3 +42,4 @@ python -m unittest research_lab_tests.py
 ## Wcześniejszy prototyp chatbota
 
 `index.py`, `chat.py` i `chat_tests.py` pochodzą z wcześniejszego prototypu chatbota bazującego na indeksie FAISS. `research_lab.py` nie wywołuje tych skryptów ani nie korzysta z indeksu. Są to odrębne ścieżki w repozytorium.
+Chatbot wyświetla automatycznie wyodrębnione słowa kluczowe przy pomysłach zewnętrznych i wewnętrznych, po polsku i angielsku.

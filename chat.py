@@ -323,6 +323,44 @@ def generate_ideas(answer, language="pl", limit=3, mode=0):
     return [f"{idea} in context" for idea in ideas[:limit]]
 
 
+def extract_keywords(text, limit=3):
+    """Extract distinct, non-stopword terms from an idea."""
+    if limit <= 0:
+        return []
+
+    stop_words = {
+        "a", "aby", "albo", "ale", "aż", "bo", "by", "być", "co", "czy",
+        "dla", "do", "gdzie", "i", "ich", "im", "in", "jest", "jak", "jako",
+        "je", "jego", "jej", "już", "lub", "ma", "mi", "mnie", "na", "nad",
+        "nie", "oraz", "o", "od", "of", "on", "or", "po", "pod", "przez",
+        "przy", "się", "są", "ta", "tak", "te", "ten", "to", "the", "this",
+        "that", "they", "their", "then", "there", "these", "those", "we", "w",
+        "with", "you", "your", "za", "ze", "z", "and", "are", "as", "at",
+        "be", "but", "for", "from", "is", "context",
+    }
+    keywords = []
+    seen = set()
+    for word in re.findall(r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]{3,}", text):
+        normalized = word.casefold()
+        if normalized in stop_words or normalized in seen:
+            continue
+        seen.add(normalized)
+        keywords.append(word)
+        if len(keywords) >= limit:
+            break
+    return keywords
+
+
+def _print_ideas(ideas, language="pl", mode=None):
+    keyword_label = "Słowa kluczowe" if language == "pl" else "Keywords"
+    for i, idea in enumerate(ideas, 1):
+        mode_label = f"[Mode {mode}] " if mode is not None else ""
+        print(f"{i}. {mode_label}{idea}")
+        keywords = extract_keywords(idea)
+        if keywords:
+            print(f"   {keyword_label}: {', '.join(keywords)}")
+
+
 def main():
     print("Mini ChatGPT (na Twoich dokumentach). Wpisz 'exit', aby zakończyć.\n")
 
@@ -393,25 +431,21 @@ Odpowiedź:
 
         if ideas_many_pl:
             print("\n💡 Pomysły_zewnętrzne (PL):")
-            for i, idea in enumerate(ideas_many_pl, 1):
-                print(f"{i}. {idea}")
+            _print_ideas(ideas_many_pl)
 
         for mode, ideas in enumerate(ideas_many_en):
             if ideas:
                 print(f"\n💡 Pomysły_zewnętrzne (EN, Mode {mode}):")
-                for i, idea in enumerate(ideas, 1):
-                    print(f"{i}. [Mode {mode}] {idea}")
+                _print_ideas(ideas, language="en", mode=mode)
 
         if ideas_one_pl:
             print("\n💡 Pomysły_wewnętrzne (PL):")
-            for i, idea in enumerate(ideas_one_pl, 1):
-                print(f"{i}. {idea}")
+            _print_ideas(ideas_one_pl)
 
         for mode, ideas in enumerate(ideas_one_en):
             if ideas:
                 print(f"\n💡 Pomysły_wewnętrzne (EN, Mode {mode}):")
-                for i, idea in enumerate(ideas, 1):
-                    print(f"{i}. [Mode {mode}] {idea}")
+                _print_ideas(ideas, language="en", mode=mode)
 
         print("\n" + "-" * 50)
 

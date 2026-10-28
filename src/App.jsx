@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowRight, ArrowUpRight, AudioLines, BookOpen, BrainCircuit, CircleHelp, FileText, FlaskConical, LoaderCircle, Menu, Network, Send, Sparkles, X } from 'lucide-react'
 import './api.css'
+import './api-error.css'
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://cryptuam-python-api.onrender.com').replace(/\/$/, '')
 
@@ -110,7 +111,7 @@ function App() {
           <article className="demo-card demo-chat"><div className="demo-card-head"><span className="demo-icon"><AudioLines size={18} /></span><span>PYTHON / CHATBOT</span></div><h3>Zadaj pytanie<br />materiałom.</h3><form className="chat-form" onSubmit={askChat}><label htmlFor="chat-question">Pytanie do dokumentów</label><div className="chat-input-row"><input id="chat-question" value={chatQuestion} onChange={event => setChatQuestion(event.target.value)} maxLength={500} placeholder="Np. co pomaga w nauce słownictwa?" /><button type="submit" disabled={chatLoading || !chatQuestion.trim()} aria-label="Wyślij pytanie">{chatLoading ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}</button></div></form>{chatResult && <div className="chat-result"><span>ODPOWIEDŹ · {chatResult.source}</span><p>{chatResult.answer}</p>{chatResult.ideas?.length > 0 && <div className="idea-tags">{chatResult.ideas.map(idea => <span key={idea}>{idea}</span>)}</div>}</div>}</article>
           <article className="demo-card demo-brief"><div className="demo-card-head"><span className="demo-icon"><FileText size={18} /></span><span>PYTHON / RESEARCH LAB</span></div><h3>Brief z bieżących<br />plików projektu.</h3><p className="demo-desc">Generator sam zlicza pozycje źródłowe, stosuje wykluczenia i zwraca hipotezę z planem badania.</p><button className="button brief-button" onClick={loadBrief} disabled={briefLoading}>{briefLoading ? <LoaderCircle size={16} className="spin" /> : <ArrowRight size={16} />}{briefLoading ? 'Tworzę brief…' : brief ? 'Odśwież brief' : 'Wygeneruj brief'}</button>{brief && <div className="brief-result"><span className="brief-status">{brief.status}</span><p className="brief-question">{brief.question}</p><div className="brief-stats"><div><strong>{brief.sources.entries_read}</strong><span>W CZYTANYCH LISTACH</span></div><div><strong>{brief.corpus.eligible_entries}</strong><span>KWALIFIKUJE SIĘ</span></div><div><strong>{brief.exclusions.entries_removed}</strong><span>WYKLUCZONO</span></div></div><p className="brief-hypothesis">{brief.hypothesis}</p></div>}</article>
         </div>
-        {apiError && <p className="api-error" role="alert">{apiError} Przy pierwszym wywołaniu bezczynne darmowe API może potrzebować chwili, żeby się uruchomić.</p>}
+        {apiError && <p className="api-error" role="alert">{apiError} Render nie ma teraz uruchomionego serwera pod skonfigurowanym adresem. <a href="https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FKondexor2000%2Fcryptuam" target="_blank" rel="noreferrer">Utwórz darmowe API z blueprintu</a>, a potem spróbuj ponownie. Pierwsze uruchomienie może potrwać około minuty.</p>}
         <p className="api-note">API działa bez bazy danych. Korzysta z plików zapisanych w repozytorium; darmowa instancja może zasypiać po okresie bez ruchu.</p>
       </section>
 

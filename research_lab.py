@@ -15,25 +15,35 @@ def normalize_entry(entry):
 
 
 def read_entries(directory):
-    if not directory.is_dir():
-        raise FileNotFoundError(f"Directory not found: {directory}")
-
-    files = sorted(directory.glob("*.txt"))
-    if not files:
-        raise ValueError(f"No .txt files found in: {directory}")
-
+    """Read non-empty vocabulary lines from one or more source directories."""
+    directories = [Path(directory)] if isinstance(directory, (str, Path)) else [
+        Path(item) for item in directory
+    ]
     entries_by_file = {}
-    for file_path in files:
-        with file_path.open(encoding="utf-8") as file:
-            entries_by_file[file_path.name] = [
-                line.strip() for line in file if line.strip()
-            ]
+    for source_dir in directories:
+        if not source_dir.is_dir():
+            raise FileNotFoundError(f"Directory not found: {source_dir}")
+
+        files = sorted(source_dir.glob("*.txt"))
+        if not files:
+            raise ValueError(f"No .txt files found in: {source_dir}")
+
+        for file_path in files:
+            key = (
+                f"{source_dir.name}/{file_path.name}"
+                if len(directories) > 1 else file_path.name
+            )
+            with file_path.open(encoding="utf-8") as file:
+                entries_by_file[key] = [line.strip() for line in file if line.strip()]
     return entries_by_file
 
 
 def build_brief(docs_dir, exclusions_dir):
     """Build a research brief from .txt vocabulary lists and exact exclusions."""
     source_entries = read_entries(docs_dir)
+    source_dirs = [Path(docs_dir)] if isinstance(docs_dir, (str, Path)) else [
+        Path(item) for item in docs_dir
+    ]
     exclusion_files = sorted(exclusions_dir.glob("*.txt"))
     if not exclusions_dir.is_dir():
         raise FileNotFoundError(f"Directory not found: {exclusions_dir}")
@@ -87,7 +97,8 @@ def build_brief(docs_dir, exclusions_dir):
             "improve delayed recall compared with practicing each file separately?"
         ),
         "sources": {
-            "directory": docs_dir.name,
+            "directory": ", ".join(directory.name for directory in source_dirs),
+            "directories": [directory.name for directory in source_dirs],
             "files": list(source_entries),
             "entries_read": source_count,
         },
@@ -113,7 +124,7 @@ def build_brief(docs_dir, exclusions_dir):
             "and item exposure are matched."
         ),
         "experiment": [
-            "Use the remaining entries in docs/*.txt as the study vocabulary; do not include exact matches from docs_not/*.txt.",
+            "Use the eligible vocabulary entries reported above; do not include exact matches from the exclusions files.",
             "Randomly assign learners to mixed-item practice or source-file-by-file practice.",
             "Match study time, prompts, and exposure per item, then administer an immediate and a delayed recall test.",
             "Repeat with pre-registered random seeds or participant groups and report uncertainty across runs.",
@@ -164,16 +175,21 @@ def print_text(brief):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Generate a vocabulary research brief from docs and docs_not."
+        description="Generate a vocabulary research brief from docs_listen, docs_speech, and exclusions."
     )
     parser.add_argument("--json", action="store_true", help="Print machine-readable JSON.")
     root = Path(__file__).resolve().parent
-    parser.add_argument("--docs-dir", type=Path, default=root / "docs")
+    parser.add_argument(
+        "--docs-dir", type=Path, action="append",
+        help="Vocabulary source directory; repeat to combine multiple directories. "
+             "Defaults to docs_listen and docs_speech.",
+    )
     parser.add_argument("--exclusions-dir", type=Path, default=root / "docs_not")
     args = parser.parse_args()
+    source_dirs = args.docs_dir or [root / "docs_listen", root / "docs_speech"]
 
     try:
-        brief = build_brief(args.docs_dir, args.exclusions_dir)
+        brief = build_brief(source_dirs, args.exclusions_dir)
     except (FileNotFoundError, ValueError, OSError) as error:
         parser.error(str(error))
 

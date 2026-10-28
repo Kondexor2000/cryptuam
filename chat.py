@@ -124,8 +124,12 @@ def build_embedding_backend(docs):
 # ----------------------------
 # Dokumenty i banlisty
 # ----------------------------
-docs_dir = resolve_docs_dir()
-docs = load_text_files(docs_dir)
+# Materiał do pomysłów jest osobny od materiału używanego do odpowiedzi.
+# Zachowujemy dotychczasowy katalog dokumentów jako zgodność wsteczną.
+listen_docs = load_text_files("docs_listen")
+speech_docs = load_text_files("docs_speech")
+docs_dir = "docs_speech" if speech_docs else resolve_docs_dir()
+docs = speech_docs or load_text_files(docs_dir)
 
 index = None
 if docs and faiss is not None:
@@ -361,8 +365,53 @@ def _print_ideas(ideas, language="pl", mode=None):
             print(f"   {keyword_label}: {', '.join(keywords)}")
 
 
+def _build_idea_context(question, answer):
+    """Combine the listen vocabulary, user's prompt, and speech context."""
+    sections = []
+    if listen_docs:
+        sections.append("Materiał słownictwa (docs_listen):\n" + "\n".join(listen_docs))
+    sections.append(f"Tekst użytkownika:\n{question}")
+    if answer:
+        sections.append(f"Kontekst odpowiedzi z docs_speech:\n{answer}")
+    return "\n\n".join(sections)
+
+
+def _print_idea_group(label, context_many, context_one):
+    """Print the external/internal idea pair for one source combination."""
+    ideas_many_pl = generate_ideas(context_many, language="pl")
+    ideas_many_en = generate_ideas(context_many, language="en", mode=0)
+    ideas_one_pl = generate_ideas(context_one, language="pl")
+    ideas_one_en = generate_ideas(context_one, language="en", mode=0)
+
+    if ideas_many_pl:
+        print(f"\n💡 Pomysły_zewnętrzne (PL) — {label}:")
+        _print_ideas(ideas_many_pl)
+    if ideas_many_en:
+        print(f"\n💡 Pomysły_zewnętrzne (EN) — {label}:")
+        _print_ideas(ideas_many_en, language="en")
+    if ideas_one_pl:
+        print(f"\n💡 Pomysły_wewnętrzne (PL) — {label}:")
+        _print_ideas(ideas_one_pl)
+    if ideas_one_en:
+        print(f"\n💡 Pomysły_wewnętrzne (EN) — {label}:")
+        _print_ideas(ideas_one_en, language="en")
+
+
 def main():
     print("Mini ChatGPT (na Twoich dokumentach). Wpisz 'exit', aby zakończyć.\n")
+
+    # Pokaż propozycje od razu, bez czekania na pierwsze pytanie użytkownika.
+    if docs:
+        library_context_many = "\n".join(docs)
+        library_context_one = docs[0]
+        _print_idea_group("biblioteka", library_context_many, library_context_one)
+        if listen_docs:
+            _print_idea_group(
+                "współpraca z docs_listen",
+                _build_idea_context("", library_context_many),
+                _build_idea_context("", library_context_one),
+            )
+        print()
 
     while True:
         question = input("Ty: ")
@@ -415,37 +464,18 @@ Odpowiedź:
             answer_many = _fallback_answer(question, context_many)
             answer_one = _fallback_answer(question, context_one)
 
-        ideas_many_pl = generate_ideas(answer_many, language="pl")
-        ideas_many_en = [
-            generate_ideas(answer_many, language="en", mode=mode)
-            for mode in range(4)
-        ]
-        ideas_one_pl = generate_ideas(answer_one, language="pl")
-        ideas_one_en = [
-            generate_ideas(answer_one, language="en", mode=mode)
-            for mode in range(4)
-        ]
-
         print("\nAI_out:", answer_many)
         print("\nAI_in:", answer_one)
 
-        if ideas_many_pl:
-            print("\n💡 Pomysły_zewnętrzne (PL):")
-            _print_ideas(ideas_many_pl)
-
-        for mode, ideas in enumerate(ideas_many_en):
-            if ideas:
-                print(f"\n💡 Pomysły_zewnętrzne (EN, Mode {mode}):")
-                _print_ideas(ideas, language="en", mode=mode)
-
-        if ideas_one_pl:
-            print("\n💡 Pomysły_wewnętrzne (PL):")
-            _print_ideas(ideas_one_pl)
-
-        for mode, ideas in enumerate(ideas_one_en):
-            if ideas:
-                print(f"\n💡 Pomysły_wewnętrzne (EN, Mode {mode}):")
-                _print_ideas(ideas, language="en", mode=mode)
+        # Zestaw biblioteczny zachowuje dotychczasowe źródło pomysłów.
+        # Drugi zestaw dodaje do niego docs_listen i tekst użytkownika.
+        _print_idea_group("biblioteka", answer_many, answer_one)
+        if listen_docs:
+            _print_idea_group(
+                "współpraca z docs_listen i tekstem użytkownika",
+                _build_idea_context(question, answer_many),
+                _build_idea_context(question, answer_one),
+            )
 
         print("\n" + "-" * 50)
 

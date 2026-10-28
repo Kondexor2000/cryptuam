@@ -89,7 +89,10 @@ class ChatTests(unittest.TestCase):
 
     def test_docs_folder_is_preferred_over_docs_not(self):
         module = load_chat_module()
-        with patch("os.path.isdir", side_effect=lambda path: path == "docs" or path == "docs_not"):
+        with patch(
+            "os.path.isdir",
+            side_effect=lambda path: path == "docs" or path == "docs_not",
+        ), patch("os.listdir", return_value=["vocabulary.txt"]):
             self.assertEqual(module.resolve_docs_dir(), "docs")
 
     def test_main_exits_immediately(self):
@@ -115,6 +118,7 @@ class ChatTests(unittest.TestCase):
     def test_main_prints_keywords_for_external_and_internal_ideas(self):
         module = load_chat_module()
         module.docs = ["Projekt aplikacji mobilnej dla uczniów"]
+        module.listen_docs = ["learning", "vocabulary"]
         module.banned_words = []
         module.qa_generator = None
         module.idea_generator = None
@@ -132,7 +136,36 @@ class ChatTests(unittest.TestCase):
         output = "\n".join(" ".join(map(str, line)) for line in printed)
         self.assertIn("Pomysły_zewnętrzne (PL)", output)
         self.assertIn("Pomysły_wewnętrzne (PL)", output)
-        self.assertGreaterEqual(output.count("Słowa kluczowe:"), 2)
+        self.assertIn("biblioteka", output)
+        self.assertIn("współpraca z docs_listen i tekstem użytkownika", output)
+        self.assertGreaterEqual(output.count("Słowa kluczowe:"), 4)
+
+    def test_idea_context_combines_listen_words_question_and_speech_answer(self):
+        module = load_chat_module()
+        module.listen_docs = ["travel vocabulary", "airport terms"]
+
+        context = module._build_idea_context("Plan a trip", "Use the airport terminal")
+
+        self.assertIn("travel vocabulary", context)
+        self.assertIn("airport terms", context)
+        self.assertIn("Plan a trip", context)
+        self.assertIn("Use the airport terminal", context)
+
+    def test_idea_group_uses_one_english_mode(self):
+        module = load_chat_module()
+        calls = []
+
+        def fake_generate(context, language="pl", limit=3, mode=0):
+            calls.append((context, language, mode))
+            return ["Idea"]
+
+        module.generate_ideas = fake_generate
+        with patch("builtins.print"):
+            module._print_idea_group("biblioteka", "all docs", "one doc")
+
+        english_modes = [mode for _, language, mode in calls if language == "en"]
+        self.assertEqual(english_modes, [0, 0])
+        self.assertEqual(len(calls), 4)
 
 
 if __name__ == "__main__":

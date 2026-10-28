@@ -6,7 +6,7 @@
 
 Czy mieszanie słów z różnych list podczas ćwiczeń poprawia ich odroczone przypominanie w porównaniu z nauką listami, jeśli czas nauki i ekspozycja na każde hasło są takie same?
 
-Generator pobiera materiał z niepustych wierszy plików `docs/*.txt`. Wiersze z `docs_not/*.txt` służą do odfiltrowania dokładnych dopasowań. Dopasowanie ignoruje wielkość liter, różnice w odstępach i interpunkcję, ale nie usuwa wpisu tylko dlatego, że zawiera wykluczone słowo jako część dłuższej frazy. Wygenerowany brief raportuje rzeczywistą liczbę i pochodzenie pozycji dla bieżącej zawartości katalogów.
+Generator pobiera materiał z niepustych wierszy plików `docs_listen/*.txt` i `docs_speech/*.txt`. Wiersze z `docs_not/*.txt` służą do odfiltrowania dokładnych dopasowań. Dopasowanie ignoruje wielkość liter, różnice w odstępach i interpunkcję, ale nie usuwa wpisu tylko dlatego, że zawiera wykluczone słowo jako część dłuższej frazy. Wygenerowany brief raportuje rzeczywistą liczbę i pochodzenie pozycji dla bieżącej zawartości katalogów.
 
 ## Hipoteza
 
@@ -14,7 +14,7 @@ Przy tej samej liczbie prezentacji i tym samym czasie nauki osoby ćwiczące na 
 
 ## Proponowany eksperyment
 
-1. Użyć kwalifikujących się haseł z `docs/*.txt`; przed badaniem zapisać ich wersję oraz listę wykluczeń z `docs_not/*.txt`.
+1. Użyć kwalifikujących się haseł z `docs_listen/*.txt` i `docs_speech/*.txt`; przed badaniem zapisać ich wersję oraz listę wykluczeń z `docs_not/*.txt`.
 2. Losowo przydzielić uczestników do warunku mieszanego lub do nauki listami odpowiadającymi plikom źródłowym.
 3. Wyrównać łączny czas ćwiczeń, podpowiedzi i liczbę ekspozycji na każde hasło.
 4. Przeprowadzić test przypominania bezpośrednio po nauce oraz test odroczony po ustalonym, jednakowym dla wszystkich czasie.

@@ -83,6 +83,31 @@ class ResearchLabTests(unittest.TestCase):
         self.assertEqual(parsed["exclusions"]["entries_removed"], 1)
         self.assertEqual(parsed["corpus"]["eligible_items"], [])
 
+    def test_brief_combines_listen_and_speech_source_directories(self):
+        listen_dir = self.root / "docs_listen"
+        speech_dir = self.root / "docs_speech"
+        listen_dir.mkdir()
+        speech_dir.mkdir()
+        (listen_dir / "words.txt").write_text("headache\nfreezing\n", encoding="utf-8")
+        (speech_dir / "words.txt").write_text("airport terminal\n", encoding="utf-8")
+        (self.exclusions_dir / "excluded.txt").write_text("headache\n", encoding="utf-8")
+
+        brief = research_lab.build_brief(
+            [listen_dir, speech_dir], self.exclusions_dir
+        )
+
+        self.assertEqual(brief["sources"]["directories"], ["docs_listen", "docs_speech"])
+        self.assertEqual(
+            brief["sources"]["files"],
+            ["docs_listen/words.txt", "docs_speech/words.txt"],
+        )
+        self.assertEqual(brief["sources"]["entries_read"], 3)
+        self.assertEqual(brief["exclusions"]["entries_removed"], 1)
+        self.assertEqual(
+            [item["entry"] for item in brief["corpus"]["eligible_items"]],
+            ["freezing", "airport terminal"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -10,3 +10,6 @@ ecg_model.pkl
 __pycache__
 work
 .env
+node_modules/
+dist/
+.vite/

@@ -4,14 +4,31 @@ Eksperymentalny projekt łączący prototyp chatbota z generatorem briefu badawc
 
 ## Strona projektu
 
-Repozytorium zawiera statyczną stronę React/Vite publikowaną w GitHub Pages. Strona jest prezentacją projektu; nie uruchamia narzędzi Pythona ani nie kopiuje lokalnych list słownictwa do builda.
+Repozytorium zawiera stronę React/Vite publikowaną w GitHub Pages oraz API FastAPI uruchamiające Pythonowe narzędzia. API czyta listy z repozytorium bezpośrednio; nie używa ani nie wymaga bazy danych.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Build produkcyjny: `npm run build` (wynik w `dist/`). Workflow GitHub Actions publikuje stronę po pushu do gałęzi `main`. W ustawieniach repozytorium wybierz **Settings → Pages → Build and deployment → GitHub Actions**. Adres projektu: `https://kondexor2000.github.io/cryptuam/`.
+Build produkcyjny: `npm run build` (wynik w `dist/`). Workflow GitHub Actions publikuje stronę po pushu do gałęzi `main`. W ustawieniach repozytorium wybierz **Settings → Pages → Build and deployment → GitHub Actions**.
+
+API można uruchomić lokalnie:
+
+```bash
+python -m pip install -r api/requirements.txt
+uvicorn api.main:app --reload
+```
+
+Endpointy: `GET /api/health`, `GET /api/brief` i `POST /api/chat` z JSON-em `{"question":"..."}`.
+
+### Wdrożenie API za darmo
+
+GitHub Pages obsługuje statyczny frontend, a darmowy Render uruchamia API Pythona. Utwórz usługę Render typu **Blueprint** dla repozytorium; gotowe ustawienia znajdują się w `render.yaml` i wybierają bezpłatny plan bez bazy danych. Render buduje i wdraża API po każdym pushu.
+
+Przycisk wdrożenia: [Deploy to Render](https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FKondexor2000%2Fcryptuam). URL API używany przez stronę to `https://cryptuam-python-api.onrender.com`; jeśli Render przydzieli inny adres, ustaw `VITE_API_URL` w kroku buildu Pages na ten adres.
+
+Darmowe usługi Render usypiają po 15 minutach bez ruchu, więc pierwsze zapytanie po przerwie może czekać około minuty. API nie utrwala pytań ani odpowiedzi i nie wymaga bazy danych.
 
 ## Generator briefu badawczego
 

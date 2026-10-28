@@ -11,6 +11,41 @@ const sections = [
   { id: 'eksperyment', label: 'Eksperyment' },
 ]
 
+async function lookupUnknownWord(question) {
+  const match = question.trim().match(/^([A-Za-z]+)[?.!]*$/)
+  if (!match) return null
+
+  const word = match[1].toLowerCase()
+  const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
+  if (!response.ok) return null
+
+  const entries = await response.json()
+  const definitions = []
+  for (const entry of entries) {
+    for (const meaning of entry.meanings || []) {
+      for (const item of meaning.definitions || []) {
+        if (!item.definition) continue
+        definitions.push({
+          partOfSpeech: meaning.partOfSpeech || '',
+          definition: item.definition,
+          example: item.example || '',
+        })
+        if (definitions.length === 3) break
+      }
+      if (definitions.length === 3) break
+    }
+    if (definitions.length === 3) break
+  }
+
+  if (!definitions.length) return null
+  return {
+    mode: 'dictionary',
+    word: entries[0]?.word || word,
+    phonetic: entries.find(entry => entry.phonetic)?.phonetic || '',
+    definitions,
+  }
+}
+
 function App() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [activeTab, setActiveTab] = useState('Mieszana')
@@ -30,6 +65,17 @@ function App() {
     setChatResult(null)
     try {
       const payload = await runPython('chat', chatQuestion.trim())
+      if (payload.source === 'brak dopasowania') {
+        try {
+          const dictionaryResult = await lookupUnknownWord(chatQuestion)
+          if (dictionaryResult) {
+            setChatResult(dictionaryResult)
+            return
+          }
+        } catch {
+          // Keep the local no-match result if the optional dictionary is unavailable.
+        }
+      }
       setChatResult(payload)
     } catch (error) {
       setRuntimeError(`Nie udało się uruchomić Pythona w przeglądarce. ${error.message}`)
@@ -99,7 +145,7 @@ function App() {
         <div className="section-kicker"><span>02</span> / ŻYWE DEMO Z PYTHONA</div>
         <div className="live-heading"><div><h2>Wypróbuj <em>narzędzia.</em></h2><p>Python działa bezpośrednio w Twojej przeglądarce. Chatbot szuka kontekstu w `docs_speech` i odtwarza terminalowy tryb wyszukiwania; lokalne modele Transformers nie są ładowane na stronie.</p></div><span className="api-badge"><span /> REACT ↔ PYTHON</span></div>
         <div className="live-grid">
-          <article className="demo-card demo-chat"><div className="demo-card-head"><span className="demo-icon"><AudioLines size={18} /></span><span>PYTHON / CHATBOT</span></div><h3>Zadaj pytanie<br />materiałom.</h3><form className="chat-form" onSubmit={askChat}><label htmlFor="chat-question">Szukaj hasła na listach</label><div className="chat-input-row"><input id="chat-question" value={chatQuestion} onChange={event => setChatQuestion(event.target.value)} maxLength={500} placeholder="Np. airport terminal" /><button type="submit" disabled={chatLoading || !chatQuestion.trim()} aria-label="Wyślij pytanie">{chatLoading ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}</button></div></form>{chatResult && <div className="chat-result"><div className="terminal-answer"><span>AI_OUT · ZE WSZYSTKICH LIST · {chatResult.source}</span><p>{chatResult.answer_out}</p></div><div className="terminal-answer"><span>AI_IN · Z JEDNEJ LISTY · {chatResult.source}</span><p>{chatResult.answer_in}</p></div><div className="terminal-ideas">{chatResult.idea_groups.map(group => <div className="terminal-idea-group" key={group.label}><span className="terminal-group-label">POMYSŁY · {group.label}</span><div className="terminal-idea-row"><span>ZEWNĘTRZNE (PL)</span><p>{group.external_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>ZEWNĘTRZNE (EN)</span><p>{group.external_en.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (PL)</span><p>{group.internal_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (EN)</span><p>{group.internal_en.join(' · ')}</p></div></div>)}</div></div>}</article>
+          <article className="demo-card demo-chat"><div className="demo-card-head"><span className="demo-icon"><AudioLines size={18} /></span><span>PYTHON / CHATBOT</span></div><h3>Zadaj pytanie<br />materiałom.</h3><form className="chat-form" onSubmit={askChat}><label htmlFor="chat-question">Szukaj hasła na listach</label><div className="chat-input-row"><input id="chat-question" value={chatQuestion} onChange={event => setChatQuestion(event.target.value)} maxLength={500} placeholder="Np. airport terminal" /><button type="submit" disabled={chatLoading || !chatQuestion.trim()} aria-label="Wyślij pytanie">{chatLoading ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}</button></div></form>{chatResult && (chatResult.mode === 'dictionary' ? <div className="chat-result dictionary-result"><span>SŁOWNIK ONLINE · {chatResult.word}{chatResult.phonetic && ` · ${chatResult.phonetic}`}</span>{chatResult.definitions.map((item, index) => <div className="dictionary-entry" key={`${item.partOfSpeech}-${index}`}><b>{item.partOfSpeech}</b><p>{item.definition}</p>{item.example && <i>{item.example}</i>}</div>)}<a href="https://dictionaryapi.dev/" target="_blank" rel="noreferrer">Źródło definicji: Free Dictionary API</a></div> : <div className="chat-result"><div className="terminal-answer"><span>AI_OUT · ZE WSZYSTKICH LIST · {chatResult.source}</span><p>{chatResult.answer_out}</p></div><div className="terminal-answer"><span>AI_IN · Z JEDNEJ LISTY · {chatResult.source}</span><p>{chatResult.answer_in}</p></div><div className="terminal-ideas">{chatResult.idea_groups.map(group => <div className="terminal-idea-group" key={group.label}><span className="terminal-group-label">POMYSŁY · {group.label}</span><div className="terminal-idea-row"><span>ZEWNĘTRZNE (PL)</span><p>{group.external_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>ZEWNĘTRZNE (EN)</span><p>{group.external_en.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (PL)</span><p>{group.internal_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (EN)</span><p>{group.internal_en.join(' · ')}</p></div></div>)}</div></div>)}</article>
           <article className="demo-card demo-brief"><div className="demo-card-head"><span className="demo-icon"><FileText size={18} /></span><span>PYTHON / RESEARCH LAB</span></div><h3>Brief z bieżących<br />plików projektu.</h3><p className="demo-desc">Generator sam zlicza pozycje źródłowe, stosuje wykluczenia i zwraca hipotezę z planem badania.</p><button className="button brief-button" onClick={loadBrief} disabled={briefLoading}>{briefLoading ? <LoaderCircle size={16} className="spin" /> : <ArrowRight size={16} />}{briefLoading ? 'Tworzę brief…' : brief ? 'Odśwież brief' : 'Wygeneruj brief'}</button>{brief && <div className="brief-result"><span className="brief-status">{brief.status}</span><p className="brief-question">{brief.question}</p><div className="brief-stats"><div><strong>{brief.sources.entries_read}</strong><span>W CZYTANYCH LISTACH</span></div><div><strong>{brief.corpus.eligible_entries}</strong><span>KWALIFIKUJE SIĘ</span></div><div><strong>{brief.exclusions.entries_removed}</strong><span>WYKLUCZONO</span></div></div><p className="brief-hypothesis">{brief.hypothesis}</p></div>}</article>
         </div>
         {runtimeError && <p className="api-error" role="alert">{runtimeError} Sprawdź połączenie z internetem i spróbuj ponownie za chwilę.</p>}

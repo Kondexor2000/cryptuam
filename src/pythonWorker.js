@@ -44,8 +44,8 @@ async function runPython(action, question = '') {
   const globals = pyodide.toPy({ question })
   try {
     const source = action === 'brief'
-      ? `import json\nfrom pathlib import Path\njson.dumps(research_lab.build_brief([Path('/app/docs_listen'), Path('/app/docs_speech')], Path('/app/docs_not')), ensure_ascii=False)`
-      : `import json\nfrom pathlib import Path\njson.dumps(chat_core.answer_question(question, chat_core.load_speech_documents(Path('/app/docs_speech'))), ensure_ascii=False)`
+      ? `import json\nfrom pathlib import Path\nimport research_lab\njson.dumps(research_lab.build_brief([Path('/app/docs_listen'), Path('/app/docs_speech')], Path('/app/docs_not')), ensure_ascii=False)`
+      : `import json\nfrom pathlib import Path\nimport chat_core\njson.dumps(chat_core.answer_question(question, chat_core.load_speech_documents(Path('/app/docs_speech'))), ensure_ascii=False)`
     const jsonResult = await pyodide.runPythonAsync(source, { globals })
     return JSON.parse(jsonResult)
   } finally {

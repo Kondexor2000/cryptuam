@@ -80,11 +80,78 @@ def ideas_from_answer(answer, limit=3):
     return ideas
 
 
-def answer_question(question, documents):
-    """Format a grounded lookup result for use by the browser."""
-    match = _best_match(question, documents)
+def _ideas_for_context(text, language="pl", limit=3):
+    ideas = ideas_from_answer(text, limit)
+    if not ideas and text.strip():
+        ideas = [text.strip()[:80]]
+    if language == "en":
+        return [f"{idea} in context" for idea in ideas]
+    return ideas
+
+
+def _idea_group(label, external, internal):
     return {
-        "answer": match["answer"] if match else NO_MATCH,
-        "source": match["source"] if match else "brak dopasowania",
+        "label": label,
+        "external_pl": _ideas_for_context(external, "pl"),
+        "external_en": _ideas_for_context(external, "en"),
+        "internal_pl": _ideas_for_context(internal, "pl"),
+        "internal_en": _ideas_for_context(internal, "en"),
+    }
+
+
+def answer_question(question, documents, listen_documents=None):
+    """Format terminal-style retrieval answers and prototype ideas for the browser."""
+    match = _best_match(question, documents)
+    if not match:
+        return {
+            "answer_out": NO_MATCH,
+            "answer_in": NO_MATCH,
+            "source": "brak dopasowania",
+            "idea_groups": [],
+            "mode": "retrieval",
+        }
+
+    answer_out = match["answer"]
+    source = match["source"]
+
+    selected_document = next(
+        (document for document in documents if document["file"] == source),
+        None,
+    )
+    first_line = next(
+        (line.strip() for line in (selected_document or {}).get("content", "").splitlines() if line.strip()),
+        answer_out,
+    )
+    answer_in = first_line[:500]
+    idea_groups = [_idea_group("biblioteka", answer_out, answer_in)]
+
+    listen_documents = listen_documents or []
+    if listen_documents:
+        listen_text = "\n".join(document["content"] for document in listen_documents)
+        external_context = (
+            "Materiał słownictwa (docs_listen):\n"
+            + listen_text
+            + f"\n\nTekst użytkownika:\n{question}"
+            + f"\n\nKontekst odpowiedzi z docs_speech:\n{answer_out}"
+        )
+        internal_context = (
+            "Materiał słownictwa (docs_listen):\n"
+            + listen_text
+            + f"\n\nTekst użytkownika:\n{question}"
+            + f"\n\nKontekst odpowiedzi z docs_speech:\n{answer_in}"
+        )
+        idea_groups.append(
+            _idea_group(
+                "współpraca z docs_listen i tekstem użytkownika",
+                external_context,
+                internal_context,
+            )
+        )
+
+    return {
+        "answer_out": answer_out,
+        "answer_in": answer_in,
+        "source": source,
+        "idea_groups": idea_groups,
         "mode": "retrieval",
     }

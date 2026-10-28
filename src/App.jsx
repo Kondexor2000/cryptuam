@@ -1,9 +1,7 @@
 import { useState } from 'react'
 import { ArrowDown, ArrowRight, ArrowUpRight, AudioLines, BookOpen, BrainCircuit, CircleHelp, FileText, FlaskConical, LoaderCircle, Menu, Network, Send, Sparkles, X } from 'lucide-react'
 import './api.css'
-import './api-error.css'
-
-const API_BASE_URL = (import.meta.env.VITE_API_URL || 'https://cryptuam-python-api.onrender.com').replace(/\/$/, '')
+import { runPython } from './pythonRuntime.js'
 
 const sections = [
   { id: 'projekt', label: 'Projekt' },
@@ -21,25 +19,19 @@ function App() {
   const [brief, setBrief] = useState(null)
   const [chatLoading, setChatLoading] = useState(false)
   const [briefLoading, setBriefLoading] = useState(false)
-  const [apiError, setApiError] = useState('')
+  const [runtimeError, setRuntimeError] = useState('')
 
   async function askChat(event) {
     event.preventDefault()
     if (!chatQuestion.trim()) return
     setChatLoading(true)
-    setApiError('')
+    setRuntimeError('')
     setChatResult(null)
     try {
-      const response = await fetch(`${API_BASE_URL}/api/chat`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: chatQuestion.trim() }),
-      })
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.detail || 'Nie udało się uzyskać odpowiedzi.')
+      const payload = await runPython('chat', chatQuestion.trim())
       setChatResult(payload)
     } catch (error) {
-      setApiError(`Nie mogę połączyć się z API Pythona. ${error.message}`)
+      setRuntimeError(`Nie udało się uruchomić Pythona w przeglądarce. ${error.message}`)
     } finally {
       setChatLoading(false)
     }
@@ -47,14 +39,12 @@ function App() {
 
   async function loadBrief() {
     setBriefLoading(true)
-    setApiError('')
+    setRuntimeError('')
     try {
-      const response = await fetch(`${API_BASE_URL}/api/brief`)
-      const payload = await response.json()
-      if (!response.ok) throw new Error(payload.detail || 'Nie udało się zbudować briefu.')
+      const payload = await runPython('brief')
       setBrief(payload)
     } catch (error) {
-      setApiError(`Nie mogę połączyć się z API Pythona. ${error.message}`)
+      setRuntimeError(`Nie udało się uruchomić Pythona w przeglądarce. ${error.message}`)
     } finally {
       setBriefLoading(false)
     }
@@ -106,13 +96,13 @@ function App() {
 
       <section className="live-tools section-wrap" id="aplikacja">
         <div className="section-kicker"><span>02</span> / ŻYWE DEMO Z PYTHONA</div>
-        <div className="live-heading"><div><h2>Wypróbuj <em>narzędzia.</em></h2><p>Te formularze wysyłają pytanie do API w Pythonie. Chatbot szuka kontekstu w `docs_speech`, a brief powstaje z list słownictwa i wykluczeń w repozytorium.</p></div><span className="api-badge"><span /> REACT ↔ FASTAPI</span></div>
+        <div className="live-heading"><div><h2>Wypróbuj <em>narzędzia.</em></h2><p>Python działa bezpośrednio w Twojej przeglądarce. Chatbot szuka kontekstu w `docs_speech`, a brief powstaje z list słownictwa i wykluczeń w repozytorium.</p></div><span className="api-badge"><span /> REACT ↔ PYTHON</span></div>
         <div className="live-grid">
           <article className="demo-card demo-chat"><div className="demo-card-head"><span className="demo-icon"><AudioLines size={18} /></span><span>PYTHON / CHATBOT</span></div><h3>Zadaj pytanie<br />materiałom.</h3><form className="chat-form" onSubmit={askChat}><label htmlFor="chat-question">Pytanie do dokumentów</label><div className="chat-input-row"><input id="chat-question" value={chatQuestion} onChange={event => setChatQuestion(event.target.value)} maxLength={500} placeholder="Np. co pomaga w nauce słownictwa?" /><button type="submit" disabled={chatLoading || !chatQuestion.trim()} aria-label="Wyślij pytanie">{chatLoading ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}</button></div></form>{chatResult && <div className="chat-result"><span>ODPOWIEDŹ · {chatResult.source}</span><p>{chatResult.answer}</p>{chatResult.ideas?.length > 0 && <div className="idea-tags">{chatResult.ideas.map(idea => <span key={idea}>{idea}</span>)}</div>}</div>}</article>
           <article className="demo-card demo-brief"><div className="demo-card-head"><span className="demo-icon"><FileText size={18} /></span><span>PYTHON / RESEARCH LAB</span></div><h3>Brief z bieżących<br />plików projektu.</h3><p className="demo-desc">Generator sam zlicza pozycje źródłowe, stosuje wykluczenia i zwraca hipotezę z planem badania.</p><button className="button brief-button" onClick={loadBrief} disabled={briefLoading}>{briefLoading ? <LoaderCircle size={16} className="spin" /> : <ArrowRight size={16} />}{briefLoading ? 'Tworzę brief…' : brief ? 'Odśwież brief' : 'Wygeneruj brief'}</button>{brief && <div className="brief-result"><span className="brief-status">{brief.status}</span><p className="brief-question">{brief.question}</p><div className="brief-stats"><div><strong>{brief.sources.entries_read}</strong><span>W CZYTANYCH LISTACH</span></div><div><strong>{brief.corpus.eligible_entries}</strong><span>KWALIFIKUJE SIĘ</span></div><div><strong>{brief.exclusions.entries_removed}</strong><span>WYKLUCZONO</span></div></div><p className="brief-hypothesis">{brief.hypothesis}</p></div>}</article>
         </div>
-        {apiError && <p className="api-error" role="alert">{apiError} Render nie ma teraz uruchomionego serwera pod skonfigurowanym adresem. <a href="https://render.com/deploy?repo=https%3A%2F%2Fgithub.com%2FKondexor2000%2Fcryptuam" target="_blank" rel="noreferrer">Utwórz darmowe API z blueprintu</a>, a potem spróbuj ponownie. Pierwsze uruchomienie może potrwać około minuty.</p>}
-        <p className="api-note">API działa bez bazy danych. Korzysta z plików zapisanych w repozytorium; darmowa instancja może zasypiać po okresie bez ruchu.</p>
+        {runtimeError && <p className="api-error" role="alert">{runtimeError} Sprawdź połączenie z internetem i spróbuj ponownie za chwilę.</p>}
+        <p className="api-note">Python uruchamia się lokalnie w przeglądarce przy pierwszym użyciu. Po pobraniu środowiska Pyodide kolejne obliczenia nie wymagają serwera ani bazy danych.</p>
       </section>
 
       <section className="experiment" id="eksperyment">

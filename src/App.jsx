@@ -18,9 +18,24 @@ async function lookupUnknownWord(question) {
     .filter(word => word.length > 1 && !stopWords.has(word)))].slice(0, 5)
   if (!words.length) return null
 
-  const results = await Promise.all(words.map(async word => {
-    const response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`)
-    if (!response.ok) return null
+  const commonFallbacks = {
+    computer: { partOfSpeech: 'noun', definition: 'An electronic device that stores and processes information.', example: '' },
+    go: { partOfSpeech: 'verb', definition: 'To move or travel from one place to another.', example: '' },
+    new: { partOfSpeech: 'adjective', definition: 'Recently made, discovered, or introduced; not existing before.', example: '' },
+    york: { partOfSpeech: 'proper noun', definition: 'York is a historic city in northern England; it is also part of the place name New York.', example: '' },
+  }
+  const results = await Promise.allSettled(words.map(async word => {
+    let response
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      try {
+        response = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(word)}`, { signal: AbortSignal.timeout(8000) })
+        if (response.ok) break
+        if (response.status !== 429 || attempt === 1) return null
+      } catch {
+        if (attempt === 1) return null
+      }
+    }
+    if (!response?.ok) return null
     const entries = await response.json()
     const definitions = []
     for (const entry of entries) {
@@ -43,15 +58,21 @@ async function lookupUnknownWord(question) {
       word: entries[0]?.word || word,
       phonetic: entries.find(entry => entry.phonetic)?.phonetic || '',
       definitions,
+      cached: false,
     }
   }))
 
-  const terms = results.filter(Boolean)
+  const terms = results.map((result, index) => result.status === 'fulfilled' && result.value
+    ? result.value
+    : commonFallbacks[words[index]]
+      ? { word: words[index], phonetic: '', definitions: [commonFallbacks[words[index]]], cached: true }
+      : null).filter(Boolean)
   if (!terms.length) return null
   return {
     mode: 'dictionary',
     query: question.trim(),
     isPhrase: words.length > 1,
+    hasCachedTerms: terms.some(term => term.cached),
     terms,
   }
 }
@@ -155,7 +176,7 @@ function App() {
         <div className="section-kicker"><span>02</span> / ŻYWE DEMO Z PYTHONA</div>
         <div className="live-heading"><div><h2>Wypróbuj <em>narzędzia.</em></h2><p>Python działa bezpośrednio w Twojej przeglądarce. Chatbot szuka kontekstu w `docs_speech` i odtwarza terminalowy tryb wyszukiwania; lokalne modele Transformers nie są ładowane na stronie.</p></div><span className="api-badge"><span /> REACT ↔ PYTHON</span></div>
         <div className="live-grid">
-          <article className="demo-card demo-chat"><div className="demo-card-head"><span className="demo-icon"><AudioLines size={18} /></span><span>PYTHON / CHATBOT</span></div><h3>Zadaj pytanie<br />materiałom.</h3><form className="chat-form" onSubmit={askChat}><label htmlFor="chat-question">Szukaj hasła na listach</label><div className="chat-input-row"><input id="chat-question" value={chatQuestion} onChange={event => setChatQuestion(event.target.value)} maxLength={500} placeholder="Np. airport terminal" /><button type="submit" disabled={chatLoading || !chatQuestion.trim()} aria-label="Wyślij pytanie">{chatLoading ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}</button></div><small className="chat-hint">Przy braku trafienia słownik sprawdzi osobno wyrazy z zapytania.</small></form>{chatResult && (chatResult.mode === 'dictionary' ? <div className="chat-result dictionary-result"><span>SŁOWNIK ONLINE · {chatResult.query}{chatResult.isPhrase && ' · wyrazy sprawdzone osobno'}</span>{chatResult.terms.map(term => <section className="dictionary-term" key={term.word}><span className="dictionary-term-heading">{term.word}{term.phonetic && ` · ${term.phonetic}`}</span>{term.definitions.map((item, index) => <div className="dictionary-entry" key={`${item.partOfSpeech}-${index}`}><b>{item.partOfSpeech}</b><p>{item.definition}</p>{item.example && <i>{item.example}</i>}</div>)}</section>)}<a href="https://dictionaryapi.dev/" target="_blank" rel="noreferrer">Źródło definicji: Free Dictionary API</a></div> : <div className="chat-result"><div className="terminal-answer"><span>AI_OUT · ZE WSZYSTKICH LIST · {chatResult.source}</span><p>{chatResult.answer_out}</p></div><div className="terminal-answer"><span>AI_IN · Z JEDNEJ LISTY · {chatResult.source}</span><p>{chatResult.answer_in}</p></div><div className="terminal-ideas">{chatResult.idea_groups.map(group => <div className="terminal-idea-group" key={group.label}><span className="terminal-group-label">POMYSŁY · {group.label}</span><div className="terminal-idea-row"><span>ZEWNĘTRZNE (PL)</span><p>{group.external_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>ZEWNĘTRZNE (EN)</span><p>{group.external_en.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (PL)</span><p>{group.internal_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (EN)</span><p>{group.internal_en.join(' · ')}</p></div></div>)}</div></div>)}</article>
+          <article className="demo-card demo-chat"><div className="demo-card-head"><span className="demo-icon"><AudioLines size={18} /></span><span>PYTHON / CHATBOT</span></div><h3>Zadaj pytanie<br />materiałom.</h3><form className="chat-form" onSubmit={askChat}><label htmlFor="chat-question">Szukaj hasła na listach</label><div className="chat-input-row"><input id="chat-question" value={chatQuestion} onChange={event => setChatQuestion(event.target.value)} maxLength={500} placeholder="Np. airport terminal" /><button type="submit" disabled={chatLoading || !chatQuestion.trim()} aria-label="Wyślij pytanie">{chatLoading ? <LoaderCircle size={17} className="spin" /> : <Send size={16} />}</button></div><small className="chat-hint">Przy braku trafienia słownik sprawdzi osobno wyrazy z zapytania.</small></form>{chatResult && (chatResult.mode === 'dictionary' ? <div className="chat-result dictionary-result"><span>SŁOWNIK ONLINE · {chatResult.query}{chatResult.isPhrase && ' · wyrazy sprawdzone osobno'}</span>{chatResult.terms.map(term => <section className="dictionary-term" key={term.word}><span className="dictionary-term-heading">{term.word}{term.phonetic && ` · ${term.phonetic}`}{term.cached && ' · kopia lokalna'}</span>{term.definitions.map((item, index) => <div className="dictionary-entry" key={`${item.partOfSpeech}-${index}`}><b>{item.partOfSpeech}</b><p>{item.definition}</p>{item.example && <i>{item.example}</i>}</div>)}</section>)}{chatResult.hasCachedTerms && <p className="chat-hint">Część definicji pochodzi z wbudowanej kopii zapasowej, ponieważ słownik online nie odpowiedział.</p>}<a href="https://dictionaryapi.dev/" target="_blank" rel="noreferrer">Źródło definicji online: Free Dictionary API</a></div> : <div className="chat-result"><div className="terminal-answer"><span>AI_OUT · ZE WSZYSTKICH LIST · {chatResult.source}</span><p>{chatResult.answer_out}</p></div><div className="terminal-answer"><span>AI_IN · Z JEDNEJ LISTY · {chatResult.source}</span><p>{chatResult.answer_in}</p></div><div className="terminal-ideas">{chatResult.idea_groups.map(group => <div className="terminal-idea-group" key={group.label}><span className="terminal-group-label">POMYSŁY · {group.label}</span><div className="terminal-idea-row"><span>ZEWNĘTRZNE (PL)</span><p>{group.external_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>ZEWNĘTRZNE (EN)</span><p>{group.external_en.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (PL)</span><p>{group.internal_pl.join(' · ')}</p></div><div className="terminal-idea-row"><span>WEWNĘTRZNE (EN)</span><p>{group.internal_en.join(' · ')}</p></div></div>)}</div></div>)}</article>
           <article className="demo-card demo-brief"><div className="demo-card-head"><span className="demo-icon"><FileText size={18} /></span><span>PYTHON / RESEARCH LAB</span></div><h3>Brief z bieżących<br />plików projektu.</h3><p className="demo-desc">Generator sam zlicza pozycje źródłowe, stosuje wykluczenia i zwraca hipotezę z planem badania.</p><button className="button brief-button" onClick={loadBrief} disabled={briefLoading}>{briefLoading ? <LoaderCircle size={16} className="spin" /> : <ArrowRight size={16} />}{briefLoading ? 'Tworzę brief…' : brief ? 'Odśwież brief' : 'Wygeneruj brief'}</button>{brief && <div className="brief-result"><span className="brief-status">{brief.status}</span><p className="brief-question">{brief.question}</p><div className="brief-stats"><div><strong>{brief.sources.entries_read}</strong><span>W CZYTANYCH LISTACH</span></div><div><strong>{brief.corpus.eligible_entries}</strong><span>KWALIFIKUJE SIĘ</span></div><div><strong>{brief.exclusions.entries_removed}</strong><span>WYKLUCZONO</span></div></div><p className="brief-hypothesis">{brief.hypothesis}</p></div>}</article>
         </div>
         {runtimeError && <p className="api-error" role="alert">{runtimeError} Sprawdź połączenie z internetem i spróbuj ponownie za chwilę.</p>}

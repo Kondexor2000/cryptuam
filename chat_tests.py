@@ -1,8 +1,9 @@
 import importlib.util
+import json
 import sys
 import types
 import unittest
-from unittest.mock import mock_open, patch
+from unittest.mock import MagicMock, mock_open, patch
 
 import numpy as np
 
@@ -167,6 +168,24 @@ class ChatTests(unittest.TestCase):
             module._chat_answer("basic", "unrelated vocabulary"),
             "Nie znalazłem odpowiedniego kontekstu w dokumentach.",
         )
+
+    def test_chat_answer_disables_model_thinking(self):
+        module = load_chat_module()
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps(
+            {"message": {"content": "Cześć!"}}
+        ).encode("utf-8")
+
+        with patch.object(
+            module.urllib.request, "urlopen", return_value=response
+        ) as urlopen:
+            answer = module._chat_answer("good morning", "")
+
+        request = urlopen.call_args.args[0]
+        payload = json.loads(request.data)
+        self.assertFalse(payload["think"])
+        self.assertEqual(answer, "Cześć!")
 
 
 if __name__ == "__main__":

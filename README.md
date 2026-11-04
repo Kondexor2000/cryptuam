@@ -47,4 +47,15 @@ python -m unittest research_lab_tests.py
 
 ## Chatbot
 
-Uruchom `python chat.py`, aby użyć materiałów z `docs_speech` do obsługi wpisanego tekstu. `index.py` buduje indeks z `docs_speech`, używając embeddingów TensorFlow Hub lub awaryjnie TF-IDF. `research_lab.py` jest odrębnym narzędziem i nie korzysta z indeksu chatbota.
+Chatbot łączy lokalny model językowy z materiałami z `docs_speech` i `docs_listen`. Model generuje odpowiedź po polsku, a dopasowane hasła z list przekazuje jako kontekst.
+
+Bezpłatny model działa lokalnie przez [Ollama](https://ollama.com/). Po zainstalowaniu Ollama pobierz model:
+
+```bash
+ollama pull qwen3.5:4b
+python chat.py
+```
+
+Model zajmuje około 3,3–4,0 GB. Nie wymaga klucza API; pierwsze pobranie wymaga internetu. Nazwę modelu i adres usługi można zmienić przez zmienne `OLLAMA_MODEL` i `OLLAMA_URL`. Jeśli Ollama lub model nie są dostępne, chatbot wyświetli polecenie potrzebne do ich uruchomienia.
+
+`index.py` buduje indeks z `docs_speech`, używając embeddingów TensorFlow Hub lub awaryjnie TF-IDF. `research_lab.py` jest odrębnym narzędziem i nie korzysta z indeksu chatbota.

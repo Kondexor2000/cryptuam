@@ -1,5 +1,8 @@
 ﻿import os
 import re
+import json
+import urllib.error
+import urllib.request
 
 import numpy as np
 
@@ -19,13 +22,6 @@ try:
 except ImportError:  # pragma: no cover
     TfidfVectorizer = None
     cosine_similarity = None
-
-try:
-    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
-except ImportError:  # pragma: no cover
-    AutoTokenizer = None
-    AutoModelForSeq2SeqLM = None
-
 
 def resolve_docs_dir():
     if os.path.isdir("docs") and os.listdir("docs"):
@@ -144,20 +140,8 @@ if docs and faiss is not None:
 
 embedding_backend = build_embedding_backend(docs)
 
-# ----------------------------
-# Model QA (Flan-T5)
-# ----------------------------
-qa_tokenizer = None
-qa_model = None
-if AutoTokenizer is not None and AutoModelForSeq2SeqLM is not None:
-    try:
-        g_flan = "google/flan-t5-base"
-        qa_tokenizer = AutoTokenizer.from_pretrained(g_flan)
-        qa_model = AutoModelForSeq2SeqLM.from_pretrained(g_flan)
-        qa_model.eval()
-    except Exception:
-        qa_tokenizer = None
-        qa_model = None
+OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "qwen3.5:4b")
 
 banned_words = load_banned_words()
 
@@ -268,116 +252,93 @@ def _fallback_answer(question, context):
 
 
 def _chat_answer(question, context, conversation_history=None):
-    """Generate one short, grounded reply; fall back to a matching source line."""
-    if not context.strip():
-        return _fallback_answer(question, context)
-    if qa_model is None or qa_tokenizer is None:
-        return _fallback_answer(question, context)
-
-    history_text = "\n".join(
-        f"User: {user_text}\nAssistant: {assistant_text}"
-        for user_text, assistant_text in (conversation_history or [])[-4:]
-    )
-    history_section = f"\nConversation so far:\n{history_text}\n" if history_text else ""
+    """Generate a natural Polish reply using local vocabulary lists as context."""
+    messages = [{
+        "role": "system",
+        "content": (
+            "Jesteś życzliwym, naturalnym asystentem rozmawiającym po polsku. "
+            "Odpowiadaj na to, co użytkownik rzeczywiście napisał; nie traktuj "
+            "każdej wiadomości jak testu słownictwa. Gdy pyta o angielskie słowo, "
+            "wyjaśnij jego znaczenie po polsku i podaj krótki przykład. "
+            "Listy poniżej są materiałami pomocniczymi: użyj ich, gdy pasują do rozmowy, "
+            "ale nie twierdź, że zawierają definicję, jeśli jej tam nie ma. "
+            "Jeśli nie znasz odpowiedzi, powiedz to wprost. Odpowiadaj zwięźle."
+        ),
+    }]
+    for user_text, assistant_text in (conversation_history or [])[-4:]:
+        messages.append({"role": "user", "content": user_text})
+        messages.append({"role": "assistant", "content": assistant_text})
     prompt = (
-        "Answer the user's question briefly and naturally in the same language. "
-        "Use only the context below. If the context does not contain the answer, "
-        "say that clearly. Do not invent examples or repeat the prompt.\n\n"
-        f"Context from docs_listen:\n{context[:5000]}\n"
-        f"{history_section}\nCurrent question: {question}\nAnswer:"
+        "Materiały z docs_speech i docs_listen:\n"
+        f"{context[:7000] or '(brak dopasowanych haseł)'}\n\n"
+        f"Wiadomość użytkownika: {question}"
+    )
+    messages.append({"role": "user", "content": prompt})
+    payload = json.dumps({
+        "model": OLLAMA_MODEL,
+        "messages": messages,
+        "stream": False,
+        "think": False,
+        "options": {"temperature": 0.5, "num_predict": 180},
+    }).encode("utf-8")
+    request = urllib.request.Request(
+        f"{OLLAMA_URL.rstrip('/')}/api/chat",
+        data=payload,
+        headers={"Content-Type": "application/json"},
+        method="POST",
     )
     try:
-        import torch
-
-        inputs = qa_tokenizer(
-            prompt,
-            return_tensors="pt",
-            truncation=True,
-            max_length=512,
+        with urllib.request.urlopen(request, timeout=180) as response:
+            result = json.loads(response.read().decode("utf-8"))
+        answer = result.get("message", {}).get("content", "").strip()
+        return answer or "Nie udało mi się ułożyć odpowiedzi. Spróbuj napisać to inaczej."
+    except urllib.error.HTTPError as error:
+        if error.code == 404:
+            return f"Nie widzę modelu {OLLAMA_MODEL}. Pobierz go poleceniem: ollama pull {OLLAMA_MODEL}"
+        return f"Ollama zwróciła błąd ({error.code}). Sprawdź, czy działa usługa Ollama."
+    except (urllib.error.URLError, TimeoutError):
+        return (
+            "Nie mogę połączyć się z Ollama. Zainstaluj Ollama, uruchom ją i pobierz model: "
+            f"ollama pull {OLLAMA_MODEL}"
         )
-        with torch.inference_mode():
-            output = qa_model.generate(
-                **inputs,
-                max_new_tokens=100,
-                num_beams=4,
-                early_stopping=True,
-            )
-        answer = qa_tokenizer.decode(output[0], skip_special_tokens=True).strip()
-        if answer:
-            return answer
-    except Exception:
-        pass
-    return _fallback_answer(question, context)
+    except (json.JSONDecodeError, KeyError, TypeError):
+        return "Ollama zwróciła nieprawidłową odpowiedź. Spróbuj ponownie."
 
 
 def main():
-    print("Chatbot materiałów językowych. Pytaj o hasła z dokumentów; wpisz 'exit', aby zakończyć.\n")
+    print("Rozmowa z asystentem. Napisz, co masz do powiedzenia; wpisz 'exit', aby zakończyć.\n")
     conversation_history = []
-    previous_speech_match = ""
 
     while True:
-        question = input("Ty: ")
+        question = input("Ty: ").strip()
 
         if question.strip().lower() in ["exit", "quit"]:
             break
 
-        if not question.strip():
+        if not question:
             continue
 
         if any(word in question.lower() for word in banned_words):
-            print("\nAsystent: Nie mogę pomóc w tym zapytaniu. Spróbuj zapytać o inne hasło.\n")
+            response = "Nie mogę odpowiedzieć na tę wiadomość. Możesz powiedzieć coś innego?"
+            print(f"\nAsystent: {response}\n")
+            conversation_history.append((question, response))
             continue
 
         if not docs and not listen_docs:
-            print("\nAsystent: Nie ma dostępnych dokumentów do przeszukania.\n")
-            continue
-
-        speech_query = question
-        if previous_speech_match:
-            speech_query = f"{question}\n{previous_speech_match}"
-        speech_context, _ = _find_best_context(speech_query, top_k=5)
-        speech_match = _fallback_answer(speech_query, speech_context)
-        no_match = _fallback_answer(question, "")
-
-        print("\nAsystent:")
-        if speech_match == no_match:
-            response = "Nie znalazłem tego hasła w docs_speech. Możesz podać krótszą frazę albo zdanie, w którym go używasz?"
-            print(f"  {response}")
+            response = "Nie mam teraz materiałów, na których mógłbym oprzeć odpowiedź."
+            print(f"\nAsystent: {response}\n")
             conversation_history.append((question, response))
-            print()
             continue
 
-        print(f"  Dopasowanie wejścia (docs_speech): {speech_match}")
-        previous_context = previous_speech_match if previous_speech_match != speech_match else ""
-        listen_query = f"{question}\n{speech_match}\n{previous_context}"
-        listen_context, _ = _find_listen_context(listen_query)
-        if not listen_context:
-            response = (
-                f"Rozumiem, pytasz o „{speech_match}”. Nie widzę tego hasła w docs_listen, "
-                "więc nie chcę zgadywać. W jakim zdaniu albo znaczeniu mam Ci pomóc?"
-            )
-            print(f"  {response}")
-            conversation_history.append((question, response))
-            previous_speech_match = speech_match
-            print()
-            continue
-
-        history = conversation_history[-4:]
-        answer = _chat_answer(question, listen_context, history) if history else _chat_answer(question, listen_context)
-        if answer == no_match:
-            response = (
-                f"Dopasowałem „{speech_match}” w docs_speech, ale nie znalazłem odpowiedzi "
-                "w docs_listen. Możesz doprecyzować, o co chcesz zapytać?"
-            )
-            print(f"  {response}")
-        else:
-            response = answer
-            print(f"\n  {response}")
-            print("\n  Źródło odpowiedzi: docs_listen.")
-            print("  Dopasowanie pytania pochodzi z docs_speech.")
+        listen_context, _ = _find_listen_context(question)
+        speech_context, _ = _find_best_context(question, top_k=5)
+        context = "\n".join(part for part in (
+            f"docs_speech:\n{speech_context}" if speech_context else "",
+            f"docs_listen:\n{listen_context}" if listen_context else "",
+        ) if part)
+        response = _chat_answer(question, context, conversation_history[-4:])
+        print(f"\nAsystent: {response}\n")
         conversation_history.append((question, response))
-        previous_speech_match = speech_match
-        print()
 
 
 if __name__ == "__main__":

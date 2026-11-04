@@ -21,12 +21,10 @@ except ImportError:  # pragma: no cover
     cosine_similarity = None
 
 try:
-    from transformers import pipeline, AutoTokenizer, AutoModelForSeq2SeqLM, AutoModelForCausalLM
+    from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 except ImportError:  # pragma: no cover
-    pipeline = None
     AutoTokenizer = None
     AutoModelForSeq2SeqLM = None
-    AutoModelForCausalLM = None
 
 
 def resolve_docs_dir():
@@ -124,7 +122,7 @@ def build_embedding_backend(docs):
 # ----------------------------
 # Dokumenty i banlisty
 # ----------------------------
-# Materiał do pomysłów jest osobny od materiału używanego do odpowiedzi.
+# Asystent korzysta z docs_speech i dodatkowego słownictwa z docs_listen.
 # Zachowujemy dotychczasowy katalog dokumentów jako zgodność wsteczną.
 listen_docs = load_text_files("docs_listen")
 speech_docs = load_text_files("docs_speech")
@@ -149,36 +147,17 @@ embedding_backend = build_embedding_backend(docs)
 # ----------------------------
 # Model QA (Flan-T5)
 # ----------------------------
-qa_generator = None
-if pipeline is not None and AutoTokenizer is not None and AutoModelForSeq2SeqLM is not None:
+qa_tokenizer = None
+qa_model = None
+if AutoTokenizer is not None and AutoModelForSeq2SeqLM is not None:
     try:
         g_flan = "google/flan-t5-base"
         qa_tokenizer = AutoTokenizer.from_pretrained(g_flan)
         qa_model = AutoModelForSeq2SeqLM.from_pretrained(g_flan)
-        qa_generator = pipeline("text-generation", model=qa_model, tokenizer=qa_tokenizer)
+        qa_model.eval()
     except Exception:
-        qa_generator = None
-
-# ----------------------------
-# Model do pomysłów
-# ----------------------------
-idea_generator = None
-if pipeline is not None and AutoTokenizer is not None and AutoModelForCausalLM is not None:
-    try:
-        idea_model_name = "radlab/polish-gpt2-small-v2"
-        idea_tokenizer = AutoTokenizer.from_pretrained(idea_model_name)
-        idea_model = AutoModelForCausalLM.from_pretrained(idea_model_name)
-
-        if getattr(idea_tokenizer, "pad_token_id", None) is None:
-            idea_tokenizer.pad_token = idea_tokenizer.eos_token
-
-        idea_generator = pipeline(
-            "text-generation",
-            model=idea_model,
-            tokenizer=idea_tokenizer,
-        )
-    except Exception:
-        idea_generator = None
+        qa_tokenizer = None
+        qa_model = None
 
 banned_words = load_banned_words()
 
@@ -192,9 +171,13 @@ def _find_best_context(question, top_k=5):
         matrix = embedding_backend["matrix"]
         q_vector = vectorizer.transform([question])
         scores = cosine_similarity(q_vector, matrix).ravel()
-        indices = np.argsort(scores)[::-1][:top_k]
+        if not np.any(scores > 0):
+            return "", []
+        indices = [
+            int(idx) for idx in np.argsort(scores)[::-1] if scores[idx] > 0
+        ][:top_k]
         selected = [docs[i] for i in indices if 0 <= i < len(docs)]
-        return "\n".join(selected), indices.tolist()
+        return "\n".join(selected), indices
 
     if index is not None:
         q_embedding = safe_embed_model(question)
@@ -214,8 +197,46 @@ def _find_best_context(question, top_k=5):
         score = sum(1 for token in normalized_question if token in text_tokens)
         ranked.append((score, idx, text))
     ranked.sort(key=lambda row: row[0], reverse=True)
+    if not ranked or ranked[0][0] == 0:
+        return "", []
     selected = [text for _, _, text in ranked[:top_k]]
     return "\n".join(selected), [idx for _, idx, _ in ranked[:top_k]]
+
+
+def _find_listen_context(question, top_k=8):
+    """Find vocabulary lines in docs_listen that relate to the user's question."""
+    stop_words = {
+        "a", "an", "and", "are", "co", "czy", "do", "for", "how", "i",
+        "in", "is", "it", "jak", "jest", "na", "of", "or", "the", "to",
+        "w", "what", "when", "where", "with", "z", "za", "ze",
+    }
+    question_tokens = [
+        token for token in re.findall(
+            r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]+", question.casefold()
+        ) if token not in stop_words
+    ]
+    if not question_tokens:
+        return "", []
+
+    question_terms = set(question_tokens)
+    normalized_question = " ".join(question_tokens)
+    ranked = []
+    for document_index, document in enumerate(listen_docs):
+        for line_index, line in enumerate(document.splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            normalized_line = re.findall(
+                r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]+", line.casefold()
+            )
+            overlap = len(question_terms & set(normalized_line))
+            if overlap:
+                phrase_match = int(normalized_question in " ".join(normalized_line))
+                ranked.append((phrase_match, overlap, -document_index, -line_index, line, document_index))
+
+    ranked.sort(reverse=True)
+    selected = ranked[:top_k]
+    return "\n".join(item[4] for item in selected), [item[5] for item in selected]
 
 
 def _fallback_answer(question, context):
@@ -240,244 +261,123 @@ def _fallback_answer(question, context):
 
     if best_line is None:
         return lines[0][:500]
+    if best_score <= 0:
+        return "Nie znalazłem odpowiedniego kontekstu w dokumentach."
 
     return best_line[:500]
 
 
-def generate_ideas(answer, language="pl", limit=3, mode=0):
-    if not answer:
-        return []
+def _chat_answer(question, context, conversation_history=None):
+    """Generate one short, grounded reply; fall back to a matching source line."""
+    if not context.strip():
+        return _fallback_answer(question, context)
+    if qa_model is None or qa_tokenizer is None:
+        return _fallback_answer(question, context)
 
-    prompt_noise = {
-        "temat", "topic", "podaj", "give", "krótkie", "short", "merytoryczne",
-        "meaningful", "pomysły", "ideas", "idea", "odpowiedz", "answer",
-        "pytanie", "question", "podstawie", "based", "context", "kontekst",
-        "na", "the", "in", "on"
-    }
+    history_text = "\n".join(
+        f"User: {user_text}\nAssistant: {assistant_text}"
+        for user_text, assistant_text in (conversation_history or [])[-4:]
+    )
+    history_section = f"\nConversation so far:\n{history_text}\n" if history_text else ""
+    prompt = (
+        "Answer the user's question briefly and naturally in the same language. "
+        "Use only the context below. If the context does not contain the answer, "
+        "say that clearly. Do not invent examples or repeat the prompt.\n\n"
+        f"Context from docs_listen:\n{context[:5000]}\n"
+        f"{history_section}\nCurrent question: {question}\nAnswer:"
+    )
+    try:
+        import torch
 
-    mode = max(0, min(3, int(mode)))
-    mode_prompts = {
-        0: "brief, direct, and practical",
-        1: "clear, polished, and user-focused",
-        2: "creative, bold, and original",
-        3: "analytical, strategic, and actionable",
-    }
-
-    if idea_generator is not None:
-        try:
-            if language == "pl":
-                prompt = f"Temat: {answer}\nPodaj {limit} krótkie, merytoryczne pomysły po polsku:\n"
-            else:
-                style = mode_prompts.get(mode, mode_prompts[0])
-                prompt = (
-                    f"Topic: {answer}\n"
-                    f"Generate {limit} short, meaningful ideas in English in a {style} style.\n"
-                )
-
-            outputs = idea_generator(
-                prompt,
-                max_new_tokens=80,
-                do_sample=True,
-                temperature=0.9,
-                top_p=0.9,
-                num_return_sequences=3,
+        inputs = qa_tokenizer(
+            prompt,
+            return_tensors="pt",
+            truncation=True,
+            max_length=512,
+        )
+        with torch.inference_mode():
+            output = qa_model.generate(
+                **inputs,
+                max_new_tokens=100,
+                num_beams=4,
+                early_stopping=True,
             )
-
-            ideas = []
-            for item in outputs:
-                text = item["generated_text"]
-                if text.startswith(prompt):
-                    text = text[len(prompt):]
-                for line in text.splitlines():
-                    cleaned = line.strip().lstrip("-*. 0123456789").strip()
-                    if not cleaned:
-                        continue
-                    norm = cleaned.lower()
-                    root = norm.split()[0].strip(",:;.-") if norm.split() else ""
-                    if norm in prompt_noise or root in prompt_noise:
-                        continue
-                    if any(token in prompt_noise for token in norm.split()):
-                        if len(cleaned.split()) <= 2:
-                            continue
-                    if cleaned not in ideas:
-                        ideas.append(cleaned)
-                    if len(ideas) >= limit:
-                        return ideas[:limit]
-            if ideas:
-                return ideas[:limit]
-        except Exception:
-            pass
-
-    keywords = re.findall(r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]{4,}", answer)
-    seen = set()
-    ideas = []
-    for item in keywords:
-        norm = item.lower()
-        if norm not in seen:
-            seen.add(norm)
-            ideas.append(item)
-        if len(ideas) >= limit:
-            break
-
-    if not ideas:
-        ideas = [answer.strip()[:80]]
-
-    if language == "pl":
-        return ideas[:limit]
-    return [f"{idea} in context" for idea in ideas[:limit]]
-
-
-def extract_keywords(text, limit=3):
-    """Extract distinct, non-stopword terms from an idea."""
-    if limit <= 0:
-        return []
-
-    stop_words = {
-        "a", "aby", "albo", "ale", "aż", "bo", "by", "być", "co", "czy",
-        "dla", "do", "gdzie", "i", "ich", "im", "in", "jest", "jak", "jako",
-        "je", "jego", "jej", "już", "lub", "ma", "mi", "mnie", "na", "nad",
-        "nie", "oraz", "o", "od", "of", "on", "or", "po", "pod", "przez",
-        "przy", "się", "są", "ta", "tak", "te", "ten", "to", "the", "this",
-        "that", "they", "their", "then", "there", "these", "those", "we", "w",
-        "with", "you", "your", "za", "ze", "z", "and", "are", "as", "at",
-        "be", "but", "for", "from", "is", "context",
-    }
-    keywords = []
-    seen = set()
-    for word in re.findall(r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]{3,}", text):
-        normalized = word.casefold()
-        if normalized in stop_words or normalized in seen:
-            continue
-        seen.add(normalized)
-        keywords.append(word)
-        if len(keywords) >= limit:
-            break
-    return keywords
-
-
-def _print_ideas(ideas, language="pl", mode=None):
-    keyword_label = "Słowa kluczowe" if language == "pl" else "Keywords"
-    for i, idea in enumerate(ideas, 1):
-        mode_label = f"[Mode {mode}] " if mode is not None else ""
-        print(f"{i}. {mode_label}{idea}")
-        keywords = extract_keywords(idea)
-        if keywords:
-            print(f"   {keyword_label}: {', '.join(keywords)}")
-
-
-def _build_idea_context(question, answer):
-    """Combine the listen vocabulary, user's prompt, and speech context."""
-    sections = []
-    if listen_docs:
-        sections.append("Materiał słownictwa (docs_listen):\n" + "\n".join(listen_docs))
-    sections.append(f"Tekst użytkownika:\n{question}")
-    if answer:
-        sections.append(f"Kontekst odpowiedzi z docs_speech:\n{answer}")
-    return "\n\n".join(sections)
-
-
-def _print_idea_group(label, context_many, context_one):
-    """Print the external/internal idea pair for one source combination."""
-    ideas_many_pl = generate_ideas(context_many, language="pl")
-    ideas_many_en = generate_ideas(context_many, language="en", mode=0)
-    ideas_one_pl = generate_ideas(context_one, language="pl")
-    ideas_one_en = generate_ideas(context_one, language="en", mode=0)
-
-    if ideas_many_pl:
-        print(f"\n💡 Pomysły_zewnętrzne (PL) — {label}:")
-        _print_ideas(ideas_many_pl)
-    if ideas_many_en:
-        print(f"\n💡 Pomysły_zewnętrzne (EN) — {label}:")
-        _print_ideas(ideas_many_en, language="en")
-    if ideas_one_pl:
-        print(f"\n💡 Pomysły_wewnętrzne (PL) — {label}:")
-        _print_ideas(ideas_one_pl)
-    if ideas_one_en:
-        print(f"\n💡 Pomysły_wewnętrzne (EN) — {label}:")
-        _print_ideas(ideas_one_en, language="en")
+        answer = qa_tokenizer.decode(output[0], skip_special_tokens=True).strip()
+        if answer:
+            return answer
+    except Exception:
+        pass
+    return _fallback_answer(question, context)
 
 
 def main():
-    print("Mini ChatGPT (na Twoich dokumentach). Wpisz 'exit', aby zakończyć.\n")
-
-    # Pokaż propozycje od razu, bez czekania na pierwsze pytanie użytkownika.
-    if docs:
-        library_context_many = "\n".join(docs)
-        library_context_one = docs[0]
-        _print_idea_group("biblioteka", library_context_many, library_context_one)
-        if listen_docs:
-            _print_idea_group(
-                "współpraca z docs_listen",
-                _build_idea_context("", library_context_many),
-                _build_idea_context("", library_context_one),
-            )
-        print()
+    print("Chatbot materiałów językowych. Pytaj o hasła z dokumentów; wpisz 'exit', aby zakończyć.\n")
+    conversation_history = []
+    previous_speech_match = ""
 
     while True:
         question = input("Ty: ")
 
-        if question.lower() in ["exit", "quit"]:
+        if question.strip().lower() in ["exit", "quit"]:
             break
 
+        if not question.strip():
+            continue
+
         if any(word in question.lower() for word in banned_words):
-            print("AI: Nie mogę wygenerować tekstów naruszających zasady etyczne.")
+            print("\nAsystent: Nie mogę pomóc w tym zapytaniu. Spróbuj zapytać o inne hasło.\n")
             continue
 
-        if not docs:
-            print("AI: Brak dokumentów do przeszukania.")
+        if not docs and not listen_docs:
+            print("\nAsystent: Nie ma dostępnych dokumentów do przeszukania.\n")
             continue
 
-        context_many, _ = _find_best_context(question, top_k=5)
-        context_one = docs[0]
-        if context_many:
-            context_one = context_many.splitlines()[0]
+        speech_query = question
+        if previous_speech_match:
+            speech_query = f"{question}\n{previous_speech_match}"
+        speech_context, _ = _find_best_context(speech_query, top_k=5)
+        speech_match = _fallback_answer(speech_query, speech_context)
+        no_match = _fallback_answer(question, "")
 
-        if qa_generator is not None:
-            prompt_many = f"""
-Odpowiedz na pytanie na podstawie kontekstu.
+        print("\nAsystent:")
+        if speech_match == no_match:
+            response = "Nie znalazłem tego hasła w docs_speech. Możesz podać krótszą frazę albo zdanie, w którym go używasz?"
+            print(f"  {response}")
+            conversation_history.append((question, response))
+            print()
+            continue
 
-Kontekst:
-{context_many}
-
-Pytanie:
-{question}
-
-Odpowiedź:
-"""
-            result_many = qa_generator(prompt_many)
-            answer_many = result_many[0]["generated_text"].strip()
-
-            prompt_one = f"""
-Odpowiedz na pytanie na podstawie kontekstu.
-
-Kontekst:
-{context_one}
-
-Pytanie:
-{question}
-
-Odpowiedź:
-"""
-            result_one = qa_generator(prompt_one)
-            answer_one = result_one[0]["generated_text"].strip()
-        else:
-            answer_many = _fallback_answer(question, context_many)
-            answer_one = _fallback_answer(question, context_one)
-
-        print("\nAI_out:", answer_many)
-        print("\nAI_in:", answer_one)
-
-        # Zestaw biblioteczny zachowuje dotychczasowe źródło pomysłów.
-        # Drugi zestaw dodaje do niego docs_listen i tekst użytkownika.
-        _print_idea_group("biblioteka", answer_many, answer_one)
-        if listen_docs:
-            _print_idea_group(
-                "współpraca z docs_listen i tekstem użytkownika",
-                _build_idea_context(question, answer_many),
-                _build_idea_context(question, answer_one),
+        print(f"  Dopasowanie wejścia (docs_speech): {speech_match}")
+        previous_context = previous_speech_match if previous_speech_match != speech_match else ""
+        listen_query = f"{question}\n{speech_match}\n{previous_context}"
+        listen_context, _ = _find_listen_context(listen_query)
+        if not listen_context:
+            response = (
+                f"Rozumiem, pytasz o „{speech_match}”. Nie widzę tego hasła w docs_listen, "
+                "więc nie chcę zgadywać. W jakim zdaniu albo znaczeniu mam Ci pomóc?"
             )
+            print(f"  {response}")
+            conversation_history.append((question, response))
+            previous_speech_match = speech_match
+            print()
+            continue
 
-        print("\n" + "-" * 50)
+        history = conversation_history[-4:]
+        answer = _chat_answer(question, listen_context, history) if history else _chat_answer(question, listen_context)
+        if answer == no_match:
+            response = (
+                f"Dopasowałem „{speech_match}” w docs_speech, ale nie znalazłem odpowiedzi "
+                "w docs_listen. Możesz doprecyzować, o co chcesz zapytać?"
+            )
+            print(f"  {response}")
+        else:
+            response = answer
+            print(f"\n  {response}")
+            print("\n  Źródło odpowiedzi: docs_listen.")
+            print("  Dopasowanie pytania pochodzi z docs_speech.")
+        conversation_history.append((question, response))
+        previous_speech_match = speech_match
+        print()
 
 
 if __name__ == "__main__":

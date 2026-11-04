@@ -24,19 +24,8 @@ def _make_transformers_module():
     class FakeModel:
         pass
 
-    def pipeline(task, model, tokenizer):
-        class FakePipeline:
-            def __call__(self, prompt, *args, **kwargs):
-                if "Pomysły" in prompt:
-                    return [{"generated_text": prompt + "Idea 1\nIdea 2"} for _ in range(3)]
-                return [{"generated_text": "Test answer"}]
-
-        return FakePipeline()
-
     module.AutoTokenizer = FakeTokenizer
     module.AutoModelForSeq2SeqLM = types.SimpleNamespace(from_pretrained=lambda name: FakeModel())
-    module.AutoModelForCausalLM = types.SimpleNamespace(from_pretrained=lambda name: FakeModel())
-    module.pipeline = pipeline
     return module
 
 
@@ -95,77 +84,89 @@ class ChatTests(unittest.TestCase):
         ), patch("os.listdir", return_value=["vocabulary.txt"]):
             self.assertEqual(module.resolve_docs_dir(), "docs")
 
+    def test_tfidf_context_returns_matching_document_indices(self):
+        module = load_chat_module()
+
+        class FakeVectorizer:
+            def transform(self, questions):
+                return questions
+
+        module.docs = ["first document", "lend", "third document"]
+        module.embedding_backend = {
+            "mode": "tfidf",
+            "vectorizer": FakeVectorizer(),
+            "matrix": None,
+        }
+        with patch.object(
+            module,
+            "cosine_similarity",
+            return_value=np.array([0.3, 0.9, 0.0]),
+        ):
+            context, indices = module._find_best_context("lend")
+
+        self.assertEqual(context, "lend\nfirst document")
+        self.assertEqual(indices, [1, 0])
+        self.assertTrue(all(type(index) is int for index in indices))
+
+    def test_listen_context_uses_user_text_alongside_speech_match(self):
+        module = load_chat_module()
+        module.listen_docs = module.load_text_files("docs_listen")
+
+        context, _ = module._find_listen_context("late flight\nlate")
+
+        self.assertIn("connection flight", context)
+        self.assertEqual(module._find_listen_context("late")[0], "")
+
     def test_main_exits_immediately(self):
         module = load_chat_module()
         with patch("builtins.input", side_effect=["exit"]):
             with patch("builtins.print"):
                 module.main()
 
-    def test_extract_keywords_filters_stop_words_and_duplicates(self):
+    def test_chat_answer_uses_matching_context_when_model_is_unavailable(self):
         module = load_chat_module()
-        self.assertEqual(
-            module.extract_keywords(
-                "Projekt aplikacji dla uczniów, aplikacji mobilnej i szkół"
-            ),
-            ["Projekt", "aplikacji", "uczniów"],
-        )
-        self.assertEqual(
-            module.extract_keywords("Build a useful learning platform"),
-            ["Build", "useful", "learning"],
-        )
-        self.assertEqual(module.extract_keywords("No keywords here", limit=0), [])
+        module.qa_model = None
+        module.qa_tokenizer = None
 
-    def test_main_prints_keywords_for_external_and_internal_ideas(self):
+        self.assertEqual(module._chat_answer("lend", "borrow\nlend\nmoney"), "lend")
+
+    def test_main_prints_grounded_answer_and_source(self):
         module = load_chat_module()
-        module.docs = ["Projekt aplikacji mobilnej dla uczniów"]
-        module.listen_docs = ["learning", "vocabulary"]
+        module.docs = ["late"]
+        module.listen_docs = ["connection flight"]
         module.banned_words = []
-        module.qa_generator = None
-        module.idea_generator = None
 
         printed = []
-        with patch("builtins.input", side_effect=["projekt aplikacji", "exit"]):
+        with patch("builtins.input", side_effect=["late flight", "exit"]):
             with patch.object(
                 module,
                 "_find_best_context",
-                return_value=("Projekt aplikacji mobilnej dla uczniów", []),
-            ):
+                return_value=("late", []),
+            ), patch.object(
+                module,
+                "_chat_answer",
+                return_value="connection flight",
+            ) as chat_answer:
                 with patch("builtins.print", side_effect=lambda *args: printed.append(args)):
                     module.main()
 
         output = "\n".join(" ".join(map(str, line)) for line in printed)
-        self.assertIn("Pomysły_zewnętrzne (PL)", output)
-        self.assertIn("Pomysły_wewnętrzne (PL)", output)
-        self.assertIn("biblioteka", output)
-        self.assertIn("współpraca z docs_listen i tekstem użytkownika", output)
-        self.assertGreaterEqual(output.count("Słowa kluczowe:"), 4)
+        chat_answer.assert_called_once_with("late flight", "connection flight")
+        self.assertIn("Dopasowanie wejścia (docs_speech): late", output)
+        self.assertIn("connection flight", output)
+        self.assertIn("Źródło odpowiedzi: docs_listen.", output)
+        self.assertIn("Dopasowanie pytania pochodzi z docs_speech.", output)
+        self.assertNotIn("Pomysły_zewnętrzne", output)
 
-    def test_idea_context_combines_listen_words_question_and_speech_answer(self):
+    def test_chat_answer_reports_no_match_when_context_is_unrelated(self):
         module = load_chat_module()
-        module.listen_docs = ["travel vocabulary", "airport terms"]
+        module.qa_model = None
+        module.qa_tokenizer = None
 
-        context = module._build_idea_context("Plan a trip", "Use the airport terminal")
-
-        self.assertIn("travel vocabulary", context)
-        self.assertIn("airport terms", context)
-        self.assertIn("Plan a trip", context)
-        self.assertIn("Use the airport terminal", context)
-
-    def test_idea_group_uses_one_english_mode(self):
-        module = load_chat_module()
-        calls = []
-
-        def fake_generate(context, language="pl", limit=3, mode=0):
-            calls.append((context, language, mode))
-            return ["Idea"]
-
-        module.generate_ideas = fake_generate
-        with patch("builtins.print"):
-            module._print_idea_group("biblioteka", "all docs", "one doc")
-
-        english_modes = [mode for _, language, mode in calls if language == "en"]
-        self.assertEqual(english_modes, [0, 0])
-        self.assertEqual(len(calls), 4)
+        self.assertEqual(
+            module._chat_answer("basic", "unrelated vocabulary"),
+            "Nie znalazłem odpowiedniego kontekstu w dokumentach.",
+        )
 
 
 if __name__ == "__main__":

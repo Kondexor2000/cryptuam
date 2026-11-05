@@ -252,26 +252,23 @@ def _fallback_answer(question, context):
 
 
 def _chat_answer(question, context, conversation_history=None):
-    """Generate a natural Polish reply using local vocabulary lists as context."""
+    """Generate a concise English reply grounded in the local vocabulary lists."""
     messages = [{
         "role": "system",
         "content": (
-            "Jesteś życzliwym, naturalnym asystentem rozmawiającym po polsku. "
-            "Odpowiadaj na to, co użytkownik rzeczywiście napisał; nie traktuj "
-            "każdej wiadomości jak testu słownictwa. Gdy pyta o angielskie słowo, "
-            "wyjaśnij jego znaczenie po polsku i podaj krótki przykład. "
-            "Listy poniżej są materiałami pomocniczymi: użyj ich, gdy pasują do rozmowy, "
-            "ale nie twierdź, że zawierają definicję, jeśli jej tam nie ma. "
-            "Jeśli nie znasz odpowiedzi, powiedz to wprost. Odpowiadaj zwięźle."
+            "You are a friendly, natural assistant. Always answer in English. "
+            "Connect your reply to a relevant phrase from docs_listen when possible, "
+            "and keep the answer concise. Treat the supplied lists as vocabulary "
+            "material, not as authoritative definitions. Do not invent definitions."
         ),
     }]
     for user_text, assistant_text in (conversation_history or [])[-4:]:
         messages.append({"role": "user", "content": user_text})
         messages.append({"role": "assistant", "content": assistant_text})
     prompt = (
-        "Materiały z docs_speech i docs_listen:\n"
-        f"{context[:7000] or '(brak dopasowanych haseł)'}\n\n"
-        f"Wiadomość użytkownika: {question}"
+        "Vocabulary from docs_speech and docs_listen:\n"
+        f"{context[:7000] or '(no matching phrases)'}\n\n"
+        f"User message: {question}"
     )
     messages.append({"role": "user", "content": prompt})
     payload = json.dumps({
@@ -318,6 +315,16 @@ def main():
         if not question:
             continue
 
+        question_words = set(re.findall(r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]+", question.casefold()))
+        speech_words = {
+            token.casefold()
+            for document in speech_docs
+            for token in re.findall(r"[A-Za-zĄĆĘŁŃÓŚŹŻąćęłńóśźż0-9]+", document)
+        }
+        if not question_words & speech_words:
+            print("\nAsystent: Please try again using at least one word from the docs_speech materials.\n")
+            continue
+
         if any(word in question.lower() for word in banned_words):
             response = "Nie mogę odpowiedzieć na tę wiadomość. Możesz powiedzieć coś innego?"
             print(f"\nAsystent: {response}\n")
@@ -331,6 +338,8 @@ def main():
             continue
 
         listen_context, _ = _find_listen_context(question)
+        if not listen_context and listen_docs:
+            listen_context = "\n".join(listen_docs)[:3000]
         speech_context, _ = _find_best_context(question, top_k=5)
         context = "\n".join(part for part in (
             f"docs_speech:\n{speech_context}" if speech_context else "",

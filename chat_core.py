@@ -14,6 +14,40 @@ STOP_WORDS = {
     "znaczy", "proszę",
 }
 NO_MATCH = "Nie znalazłem pasującego hasła w docs_speech. Spróbuj zapytać o konkretne słowo lub frazę z list."
+RETRY_MESSAGE = "Please try again using at least one word from the docs_speech materials."
+
+
+def _has_speech_word(question, documents):
+    question_words = {token.casefold() for token in TOKEN_RE.findall(question)}
+    speech_words = {
+        token.casefold()
+        for document in documents
+        for token in TOKEN_RE.findall(document["content"])
+    }
+    return bool(question_words & speech_words)
+
+
+def _listen_reply(question, speech_answer, listen_documents):
+    """Reply in English with a phrase from docs_listen related to the match."""
+    listen_lines = [
+        line.strip()
+        for document in listen_documents
+        for line in document["content"].splitlines()
+        if line.strip()
+    ]
+    if not listen_lines:
+        return f"I found “{speech_answer}” in docs_speech, but there are no docs_listen phrases to connect it to."
+
+    reference_words = {
+        token.casefold()
+        for token in TOKEN_RE.findall(f"{question} {speech_answer}")
+    }
+    related_line = next(
+        (line for line in listen_lines
+         if reference_words & {token.casefold() for token in TOKEN_RE.findall(line)}),
+        listen_lines[0],
+    )
+    return f'A related listening phrase is “{related_line}”. Try using it in an English sentence.'
 
 
 def load_speech_documents(directory):
@@ -101,6 +135,16 @@ def _idea_group(label, external, internal):
 
 def answer_question(question, documents, listen_documents=None):
     """Format terminal-style retrieval answers and prototype ideas for the browser."""
+    listen_documents = listen_documents or []
+    if not _has_speech_word(question, documents):
+        return {
+            "answer_out": RETRY_MESSAGE,
+            "answer_in": "",
+            "source": "brak dopasowania",
+            "idea_groups": [],
+            "mode": "retry",
+        }
+
     match = _best_match(question, documents)
     if not match:
         return {
@@ -111,7 +155,8 @@ def answer_question(question, documents, listen_documents=None):
             "mode": "retrieval",
         }
 
-    answer_out = match["answer"]
+    speech_answer = match["answer"]
+    answer_out = _listen_reply(question, speech_answer, listen_documents)
     source = match["source"]
 
     selected_document = next(
@@ -125,7 +170,6 @@ def answer_question(question, documents, listen_documents=None):
     answer_in = first_line[:500]
     idea_groups = [_idea_group("biblioteka", answer_out, answer_in)]
 
-    listen_documents = listen_documents or []
     if listen_documents:
         listen_text = "\n".join(document["content"] for document in listen_documents)
         external_context = (

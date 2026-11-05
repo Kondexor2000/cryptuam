@@ -1,0 +1,37 @@
+loose
+tight
+hooded
+long-sleeved
+polo neck
+sleeveless
+V-neck
+checked
+patterned
+plain
+spotted
+striped
+a cotton vest
+a demon waistcoat
+a fur collar
+a lace top
+a linen suit
+a lycra swinsuit
+a silk scarf
+a velvet bow tie
+a woollen cardigan
+leather sandals
+suede boots
+casual
+classic
+old-fasioned
+scruffy
+smart
+dress up
+hang up
+fit
+suits
+matches
+get changed
+get undressed
+get dressed
+go with

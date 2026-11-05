@@ -111,12 +111,12 @@ class ChatTests(unittest.TestCase):
 
     def test_listen_context_uses_user_text_alongside_speech_match(self):
         module = load_chat_module()
-        module.listen_docs = module.load_text_files("docs_listen")
+        module.listen_docs = ["connection flight\nlate"]
 
         context, _ = module._find_listen_context("late flight\nlate")
 
         self.assertIn("connection flight", context)
-        self.assertEqual(module._find_listen_context("late")[0], "")
+        self.assertEqual(module._find_listen_context("late")[0], "late")
 
     def test_main_exits_immediately(self):
         module = load_chat_module()
@@ -124,16 +124,29 @@ class ChatTests(unittest.TestCase):
             with patch("builtins.print"):
                 module.main()
 
-    def test_chat_answer_uses_matching_context_when_model_is_unavailable(self):
+    def test_chat_answer_uses_ollama_response_and_vocabulary_context(self):
         module = load_chat_module()
-        module.qa_model = None
-        module.qa_tokenizer = None
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps(
+            {"message": {"content": "I can lend you a book."}}
+        ).encode("utf-8")
 
-        self.assertEqual(module._chat_answer("lend", "borrow\nlend\nmoney"), "lend")
+        with patch.object(
+            module.urllib.request, "urlopen", return_value=response
+        ) as urlopen:
+            answer = module._chat_answer("lend", "borrow\nlend\nmoney")
 
-    def test_main_prints_grounded_answer_and_source(self):
+        payload = json.loads(urlopen.call_args.args[0].data)
+        self.assertEqual(answer, "I can lend you a book.")
+        self.assertIn("borrow\nlend\nmoney", payload["messages"][-1]["content"])
+        self.assertIn("Always answer in English", payload["messages"][0]["content"])
+        self.assertIn("Do not invent definitions", payload["messages"][0]["content"])
+
+    def test_main_passes_speech_and_listen_context_to_chat_answer(self):
         module = load_chat_module()
         module.docs = ["late"]
+        module.speech_docs = ["late flight"]
         module.listen_docs = ["connection flight"]
         module.banned_words = []
 
@@ -152,22 +165,39 @@ class ChatTests(unittest.TestCase):
                     module.main()
 
         output = "\n".join(" ".join(map(str, line)) for line in printed)
-        chat_answer.assert_called_once_with("late flight", "connection flight")
-        self.assertIn("Dopasowanie wejścia (docs_speech): late", output)
-        self.assertIn("connection flight", output)
-        self.assertIn("Źródło odpowiedzi: docs_listen.", output)
-        self.assertIn("Dopasowanie pytania pochodzi z docs_speech.", output)
-        self.assertNotIn("Pomysły_zewnętrzne", output)
-
-    def test_chat_answer_reports_no_match_when_context_is_unrelated(self):
-        module = load_chat_module()
-        module.qa_model = None
-        module.qa_tokenizer = None
-
-        self.assertEqual(
-            module._chat_answer("basic", "unrelated vocabulary"),
-            "Nie znalazłem odpowiedniego kontekstu w dokumentach.",
+        chat_answer.assert_called_once_with(
+            "late flight",
+            "docs_speech:\nlate\ndocs_listen:\nconnection flight",
+            [],
         )
+        self.assertIn("Asystent: connection flight", output)
+
+    def test_main_rejects_question_without_docs_speech_word(self):
+        module = load_chat_module()
+        module.speech_docs = ["connection flight"]
+        module.banned_words = []
+
+        printed = []
+        with patch("builtins.input", side_effect=["basic", "exit"]):
+            with patch.object(module, "_chat_answer") as chat_answer:
+                with patch("builtins.print", side_effect=lambda *args: printed.append(args)):
+                    module.main()
+
+        chat_answer.assert_not_called()
+        output = "\n".join(" ".join(map(str, line)) for line in printed)
+        self.assertIn("Please try again using at least one word", output)
+
+    def test_chat_answer_reports_ollama_unavailable(self):
+        module = load_chat_module()
+
+        with patch.object(
+            module.urllib.request,
+            "urlopen",
+            side_effect=module.urllib.error.URLError("not running"),
+        ):
+            answer = module._chat_answer("lend", "borrow\nlend\nmoney")
+
+        self.assertIn("Nie mogę połączyć się z Ollama", answer)
 
     def test_chat_answer_disables_model_thinking(self):
         module = load_chat_module()
